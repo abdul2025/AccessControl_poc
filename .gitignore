@@ -1,0 +1,19 @@
+# HID material — confidential (NDA) and/or third-party binaries: never pushed.
+/HID Doc/
+AccessControll_App_poc/lib/HIDAero/**/*.dll
+AccessControll_App_poc/lib/HIDAero/**/*.pdb
+AccessControll_App_poc/lib/HIDAero/**/*.zip
+
+# Local Claude Code settings (machine-specific permissions)
+.claude/settings.local.json
+
+# Build output and IDE files outside the app folder (the app has its own .gitignore)
+bin/
+obj/
+.vs/
+.idea/
+*.user
+
+# Local secrets
+.env
+appsettings.*.local.json

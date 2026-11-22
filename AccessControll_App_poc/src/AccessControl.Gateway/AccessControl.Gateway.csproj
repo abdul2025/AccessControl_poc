@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <!--
+    Owns the HID Aero driver (spec §3.1). Windows x64 only; runs as a console app in development
+    and as a Windows Service in deployment. Exactly one instance per controller estate (TCP 3001).
+  -->
+  <PropertyGroup>
+    <PlatformTarget>x64</PlatformTarget>
+    <UserSecretsId>AccessControl.Gateway-b42610bf-1a72-430b-ba0a-f128d2a3fbac</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AccessControl.Application\AccessControl.Application.csproj" />
+    <ProjectReference Include="..\AccessControl.Infrastructure\AccessControl.Infrastructure.csproj" />
+    <ProjectReference Include="..\AccessControl.Infrastructure.Aero\AccessControl.Infrastructure.Aero.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" />
+  </ItemGroup>
+
+</Project>

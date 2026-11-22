@@ -1,0 +1,9 @@
+{
+  "theme": "dark",
+  "agentPushNotifEnabled": true,
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": ["/Users/abdulwahab/projects/dotnet"],
+    "allow": ["Bash", "Read", "Edit", "Write"]
+  }
+}

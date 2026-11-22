@@ -1,0 +1,65 @@
+html {
+  font-size: 14px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+  margin-bottom: 60px;
+}
+
+.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
+  color: var(--bs-secondary-color);
+  text-align: end;
+}
+
+.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
+  text-align: start;
+}
+
+/* Notices: block + --modifier (success | warning | danger | info). */
+.notice {
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+}
+
+.notice--success { color: #0a3622; background-color: #d1e7dd; border-color: #a3cfbb; }
+.notice--warning { color: #664d03; background-color: #fff3cd; border-color: #ffe69c; }
+.notice--danger  { color: #58151c; background-color: #f8d7da; border-color: #f1aeb5; }
+.notice--info    { color: #055160; background-color: #cff4fc; border-color: #9eeaf9; }
+
+/* Buttons: block + --modifier (primary | secondary | danger). */
+.button {
+  display: inline-block;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+.button--primary   { color: #fff; background-color: #0d6efd; border-color: #0d6efd; }
+.button--secondary { color: #212529; background-color: #fff; border-color: #6c757d; }
+.button--danger    { color: #fff; background-color: #dc3545; border-color: #dc3545; }
+.button[disabled]  { opacity: 0.65; cursor: not-allowed; }

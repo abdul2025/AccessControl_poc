@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AccessControl.Application/AccessControl.Application.csproj" />
+    <Project Path="src/AccessControl.Domain/AccessControl.Domain.csproj" />
+    <Project Path="src/AccessControl.Gateway/AccessControl.Gateway.csproj" />
+    <Project Path="src/AccessControl.Infrastructure.Aero/AccessControl.Infrastructure.Aero.csproj" />
+    <Project Path="src/AccessControl.Infrastructure/AccessControl.Infrastructure.csproj" />
+    <Project Path="src/AccessControl.Web/AccessControl.Web.csproj" />
+  </Folder>
+</Solution>

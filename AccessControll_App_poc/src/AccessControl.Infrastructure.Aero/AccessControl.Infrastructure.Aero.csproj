@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The ONLY project that references the HID Aero SDK (spec §3.2, §3.5 rule 9).
+    The native driver is Windows x64 only, so this project and every host that loads it build as x64.
+  -->
+  <PropertyGroup>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AccessControl.Application\AccessControl.Application.csproj" />
+    <ProjectReference Include="..\AccessControl.Domain\AccessControl.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="HIDAeroWrap64">
+      <HintPath>$(AeroSdkDir)HIDAeroWrap64.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <!-- Native driver: flows to the output of every project that references this one (the Gateway). -->
+    <None Include="$(AeroSdkDir)HIDAeroNet64.dll" Link="HIDAeroNet64.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="CheckAeroSdkDir" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(AeroSdkDir)HIDAeroWrap64.dll') Or !Exists('$(AeroSdkDir)HIDAeroNet64.dll')"
+           Text="HID Aero SDK $(AeroSdkVersion) not found. Put HIDAeroNet64.dll and HIDAeroWrap64.dll in $(AeroSdkDir)" />
+  </Target>
+
+</Project>
