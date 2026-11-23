@@ -103,6 +103,46 @@ public static class ScpLabels
         return $"{spec.Inputs} inputs · {spec.Outputs} relays{readers}";
     }
 
+    public static string ToLabel(ReaderInterface readerInterface) => readerInterface switch
+    {
+        ReaderInterface.Osdp => "OSDP (RS-485)",
+        ReaderInterface.Wiegand => "Wiegand",
+        _ => readerInterface.ToString(),
+    };
+
+    public static string ToLabel(OsdpBaudRate baudRate) => baudRate switch
+    {
+        OsdpBaudRate.Baud9600 => "9600",
+        OsdpBaudRate.Baud19200 => "19200",
+        OsdpBaudRate.Baud38400 => "38400",
+        OsdpBaudRate.Baud57600 => "57600",
+        OsdpBaudRate.Baud115200 => "115200",
+        OsdpBaudRate.Baud230400 => "230400",
+        _ => baudRate.ToString(),
+    };
+
+    public static string ToLabel(DoorAccessMode mode) => mode switch
+    {
+        DoorAccessMode.CardOnly => "Card only",
+        DoorAccessMode.CardOrPin => "Card or PIN",
+        DoorAccessMode.CardAndPin => "Card and PIN",
+        DoorAccessMode.Locked => "Locked (no access)",
+        DoorAccessMode.Unlocked => "Unlocked (free access)",
+        _ => mode.ToString(),
+    };
+
+    public static IEnumerable<SelectListItem> ReaderInterfaceOptions() =>
+        Enum.GetValues<ReaderInterface>().Select(value => new SelectListItem(ToLabel(value), value.ToString()));
+
+    /// <summary>Baud rates in ascending speed (the enum is ordered by SDK code, not speed).</summary>
+    public static IEnumerable<SelectListItem> BaudRateOptions() =>
+        new[] { OsdpBaudRate.Baud9600, OsdpBaudRate.Baud19200, OsdpBaudRate.Baud38400, OsdpBaudRate.Baud57600, OsdpBaudRate.Baud115200, OsdpBaudRate.Baud230400 }
+            .Select(value => new SelectListItem(ToLabel(value), value.ToString()));
+
+    public static IEnumerable<SelectListItem> AccessModeOptions() =>
+        new[] { DoorAccessMode.CardOnly, DoorAccessMode.CardOrPin, DoorAccessMode.CardAndPin, DoorAccessMode.Locked, DoorAccessMode.Unlocked }
+            .Select(value => new SelectListItem(ToLabel(value), value.ToString()));
+
     public static IEnumerable<SelectListItem> ConnectionModeOptions() =>
         Enum.GetValues<ConnectionMode>().Select(mode => new SelectListItem(ToLabel(mode), mode.ToString()));
 

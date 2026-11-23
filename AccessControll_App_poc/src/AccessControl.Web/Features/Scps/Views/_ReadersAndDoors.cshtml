@@ -1,0 +1,131 @@
+@model ScpDetailsViewModel
+@{
+    var scp = Model.Scp;
+    var hasReaderPorts = scp.SioPanels.Any(panel => panel.ReaderPorts > 0);
+}
+
+<section id="readers" aria-labelledby="scp-readers-title">
+    <div class="section-heading">
+        <div>
+            <h2 id="scp-readers-title">Readers</h2>
+            <p class="field-hint">Card readers on the SIOs' reader ports (VL70LF: OSDP or Wiegand).</p>
+        </div>
+        @if (hasReaderPorts)
+        {
+            <a class="button button--primary" asp-action="AddReader" asp-route-id="@scp.Id" data-modal>Add reader</a>
+        }
+    </div>
+
+    @if (scp.Readers.Count == 0)
+    {
+        <p class="empty-state">No readers yet.</p>
+    }
+    else
+    {
+        <div class="table-card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">SIO · reader</th>
+                        <th scope="col">Model</th>
+                        <th scope="col">Interface</th>
+                        <th scope="col">Settings</th>
+                        <th scope="col">Door</th>
+                        <th scope="col"><span class="visually-hidden">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var reader in scp.Readers)
+                    {
+                        var door = scp.Doors.FirstOrDefault(item => item.EntryReaderId == reader.Id || item.ExitReaderId == reader.Id);
+                        <tr>
+                            <th scope="row">@reader.Name</th>
+                            <td>SIO @reader.SioNumber · reader @reader.Number</td>
+                            <td>@reader.Model</td>
+                            <td>@ScpLabels.ToLabel(reader.Interface)</td>
+                            <td>
+                                @if (reader.Interface == ReaderInterface.Osdp)
+                                {
+                                    @:Address @reader.OsdpAddress · @ScpLabels.ToLabel(reader.OsdpBaudRate) baud@(reader.SecureChannel ? " · secure channel" : "")
+                                }
+                                else
+                                {
+                                    @(reader.HasKeypad ? "Keypad" : "No keypad")
+                                }
+                            </td>
+                            <td>@(door is null ? "—" : $"Door {door.Number} ({(door.EntryReaderId == reader.Id ? "entry" : "exit")})")</td>
+                            <td class="actions-cell">
+                                <a asp-action="EditReader" asp-route-id="@scp.Id" asp-route-readerId="@reader.Id" data-modal aria-label="Edit reader @reader.Name" title="Edit">Edit</a>
+                                <a asp-action="RemoveReader" asp-route-id="@scp.Id" asp-route-readerId="@reader.Id" data-modal aria-label="Remove reader @reader.Name" title="Remove">Remove</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+<section id="doors" aria-labelledby="scp-doors-title">
+    <div class="section-heading">
+        <div>
+            <h2 id="scp-doors-title">Doors</h2>
+            <p class="field-hint">Each door links a reader with its lock relay, door contact and exit button.</p>
+        </div>
+        @if (scp.Readers.Count > 0 && scp.NextFreeDoorNumber is not null)
+        {
+            <a class="button button--primary" asp-action="AddDoor" asp-route-id="@scp.Id" data-modal>Add door</a>
+        }
+    </div>
+
+    @if (scp.Doors.Count == 0)
+    {
+        <p class="empty-state">@(scp.Readers.Count == 0 ? "Add a reader first, then create the door." : "No doors yet.")</p>
+    }
+    else
+    {
+        <div class="table-card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Readers</th>
+                        <th scope="col">Lock</th>
+                        <th scope="col">Door contact</th>
+                        <th scope="col">Exit button</th>
+                        <th scope="col">Mode</th>
+                        <th scope="col">Times (s)</th>
+                        <th scope="col"><span class="visually-hidden">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var door in scp.Doors)
+                    {
+                        <tr>
+                            <th scope="row">@door.Number</th>
+                            <td>@door.Name</td>
+                            <td>
+                                In: @door.EntryReaderName
+                                @if (door.ExitReaderName is { } exit)
+                                {
+                                    <br />@:Out: @exit
+                                }
+                            </td>
+                            <td>@door.LockOutputName</td>
+                            <td>@(door.DoorContactInputName ?? "—")</td>
+                            <td>@(door.ExitButtonInputName ?? "—")</td>
+                            <td>@ScpLabels.ToLabel(door.AccessMode)</td>
+                            <td title="Unlock min / max · held-open alarm">@door.StrikeMinSeconds–@door.StrikeMaxSeconds · @door.HeldOpenSeconds</td>
+                            <td class="actions-cell">
+                                <a asp-action="EditDoor" asp-route-id="@scp.Id" asp-route-doorId="@door.Id" data-modal aria-label="Edit door @door.Name" title="Edit">Edit</a>
+                                <a asp-action="RemoveDoor" asp-route-id="@scp.Id" asp-route-doorId="@door.Id" data-modal aria-label="Remove door @door.Name" title="Remove">Remove</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

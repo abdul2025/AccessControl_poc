@@ -44,7 +44,11 @@ Switch HID SDK build: `dotnet build -p:AeroSdkVersion=4.8.1.3` (DLLs in `lib/HID
 | Sites | `/Sites` | Locations that group controllers. Code unique (upper-case); a site with controllers cannot be deleted. |
 | Controllers | `/Scps` | HID Aero X1100 controllers (`Scp` in code). IP Client: serial number required; IP Server: IP + port. SIO 0 (internal I/O) is created automatically. Saved as desired configuration only — nothing is sent to hardware until publishing (step 4). |
 
-Migrations applied: `AddSitesAndScps`.
+On a controller's page (step 3): **I/O panels (SIO)** — built-in SIO 0 plus external X100 / X200 / X300, each with its
+inputs (general + enclosure & power supply) and relays · **Readers** — VL70LF on OSDP or Wiegand · **Doors** — reader(s),
+lock relay, door contact, exit button, times and access mode.
+
+Migrations applied: `AddSitesAndScps`, `AddSioPoints`, `DedicatedInputsNotMonitored`, `AddReadersAndDoors`.
 
 ## Migrations
 

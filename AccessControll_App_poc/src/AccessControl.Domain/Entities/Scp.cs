@@ -10,7 +10,7 @@ namespace AccessControl.Domain.Entities;
 /// An HID Aero controller (SCP, shown to users as "Controller") and its desired configuration. Saving changes only the
 /// database; the Gateway applies a published configuration to the hardware (docs/PROJECT_SPEC.md §3.7).
 /// </summary>
-public sealed class Scp : AuditableEntity, IHasDisplayName
+public sealed partial class Scp : AuditableEntity, IHasDisplayName
 {
     public const string ValidationErrorCode = "Scp.Validation";
     public const string NumberLockedErrorCode = "Scp.NumberLocked";
@@ -215,6 +215,11 @@ public sealed class Scp : AuditableEntity, IHasDisplayName
         if (panel.IsInternal)
         {
             return Result.Failure(InternalSioErrorCode, "The controller's built-in SIO cannot be removed.");
+        }
+
+        if (IsSioInUse(panel))
+        {
+            return Result.Failure(SioInUseErrorCode, "A reader or door uses this SIO. Remove or change them first.");
         }
 
         _sioPanels.Remove(panel);

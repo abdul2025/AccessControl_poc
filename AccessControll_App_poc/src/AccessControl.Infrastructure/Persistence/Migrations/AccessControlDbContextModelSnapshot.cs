@@ -23,6 +23,86 @@ namespace AccessControl.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("AccessControl.Domain.Entities.Door", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("AccessMode")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("DoorContactInputId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("EntryReaderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ExitButtonInputId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ExitReaderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<short>("HeldOpenSeconds")
+                        .HasColumnType("smallint");
+
+                    b.Property<Guid>("LockOutputId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<short>("Number")
+                        .HasColumnType("smallint");
+
+                    b.Property<Guid>("ScpId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<short>("StrikeMaxSeconds")
+                        .HasColumnType("smallint");
+
+                    b.Property<short>("StrikeMinSeconds")
+                        .HasColumnType("smallint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DoorContactInputId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Doors_DoorContactInputId")
+                        .HasFilter("[DoorContactInputId] IS NOT NULL");
+
+                    b.HasIndex("EntryReaderId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Doors_EntryReaderId");
+
+                    b.HasIndex("ExitButtonInputId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Doors_ExitButtonInputId")
+                        .HasFilter("[ExitButtonInputId] IS NOT NULL");
+
+                    b.HasIndex("ExitReaderId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Doors_ExitReaderId")
+                        .HasFilter("[ExitReaderId] IS NOT NULL");
+
+                    b.HasIndex("LockOutputId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Doors_LockOutputId");
+
+                    b.HasIndex("ScpId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Doors_ScpId_Name");
+
+                    b.HasIndex("ScpId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Doors_ScpId_Number");
+
+                    b.ToTable("Doors", (string)null);
+                });
+
             modelBuilder.Entity("AccessControl.Domain.Entities.InputPoint", b =>
                 {
                     b.Property<Guid>("Id")
@@ -88,6 +168,59 @@ namespace AccessControl.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("IX_OutputPoints_SioPanelId_Number");
 
                     b.ToTable("OutputPoints", (string)null);
+                });
+
+            modelBuilder.Entity("AccessControl.Domain.Entities.Reader", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("HasKeypad")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Interface")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<short>("Number")
+                        .HasColumnType("smallint");
+
+                    b.Property<short>("OsdpAddress")
+                        .HasColumnType("smallint");
+
+                    b.Property<int>("OsdpBaudRate")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ScpId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("SecureChannel")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("SioPanelId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScpId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Readers_ScpId_Name");
+
+                    b.HasIndex("SioPanelId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Readers_SioPanelId_Number");
+
+                    b.ToTable("Readers", (string)null);
                 });
 
             modelBuilder.Entity("AccessControl.Domain.Entities.Scp", b =>
@@ -309,6 +442,42 @@ namespace AccessControl.Infrastructure.Persistence.Migrations
                     b.ToTable("Sites", (string)null);
                 });
 
+            modelBuilder.Entity("AccessControl.Domain.Entities.Door", b =>
+                {
+                    b.HasOne("AccessControl.Domain.Entities.InputPoint", null)
+                        .WithMany()
+                        .HasForeignKey("DoorContactInputId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("AccessControl.Domain.Entities.Reader", null)
+                        .WithMany()
+                        .HasForeignKey("EntryReaderId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("AccessControl.Domain.Entities.InputPoint", null)
+                        .WithMany()
+                        .HasForeignKey("ExitButtonInputId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("AccessControl.Domain.Entities.Reader", null)
+                        .WithMany()
+                        .HasForeignKey("ExitReaderId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("AccessControl.Domain.Entities.OutputPoint", null)
+                        .WithMany()
+                        .HasForeignKey("LockOutputId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("AccessControl.Domain.Entities.Scp", null)
+                        .WithMany("Doors")
+                        .HasForeignKey("ScpId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("AccessControl.Domain.Entities.InputPoint", b =>
                 {
                     b.HasOne("AccessControl.Domain.Entities.SioPanel", null)
@@ -324,6 +493,21 @@ namespace AccessControl.Infrastructure.Persistence.Migrations
                         .WithMany("Outputs")
                         .HasForeignKey("SioPanelId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AccessControl.Domain.Entities.Reader", b =>
+                {
+                    b.HasOne("AccessControl.Domain.Entities.Scp", null)
+                        .WithMany("Readers")
+                        .HasForeignKey("ScpId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AccessControl.Domain.Entities.SioPanel", null)
+                        .WithMany()
+                        .HasForeignKey("SioPanelId")
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
                 });
 
@@ -347,6 +531,10 @@ namespace AccessControl.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("AccessControl.Domain.Entities.Scp", b =>
                 {
+                    b.Navigation("Doors");
+
+                    b.Navigation("Readers");
+
                     b.Navigation("SioPanels");
                 });
 

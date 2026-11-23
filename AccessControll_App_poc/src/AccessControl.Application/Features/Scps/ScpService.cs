@@ -127,6 +127,46 @@ public sealed class ScpService(IScpRepository repository) : IScpService
     public Task<Result> UpdateOutputAsync(Guid scpId, Guid outputId, UpdateOutputDto dto, CancellationToken cancellationToken) =>
         ChangeHardwareAsync(scpId, dto.RowVersion, scp => scp.UpdateOutput(outputId, dto.Name, dto.PulseSeconds), cancellationToken);
 
+    public Task<Result> AddReaderAsync(Guid scpId, ReaderWriteDto dto, CancellationToken cancellationToken) =>
+        ChangeHardwareAsync(
+            scpId,
+            dto.RowVersion,
+            scp => scp.AddReader(dto.SioPanelId, dto.Number, dto.Name, dto.Model, dto.Interface, dto.OsdpAddress,
+                dto.OsdpBaudRate, dto.SecureChannel, dto.HasKeypad),
+            cancellationToken);
+
+    public Task<Result> UpdateReaderAsync(Guid scpId, Guid readerId, ReaderWriteDto dto, CancellationToken cancellationToken) =>
+        ChangeHardwareAsync(
+            scpId,
+            dto.RowVersion,
+            scp => scp.UpdateReader(readerId, dto.SioPanelId, dto.Number, dto.Name, dto.Model, dto.Interface,
+                dto.OsdpAddress, dto.OsdpBaudRate, dto.SecureChannel, dto.HasKeypad),
+            cancellationToken);
+
+    public Task<Result> RemoveReaderAsync(Guid scpId, Guid readerId, byte[] rowVersion, CancellationToken cancellationToken) =>
+        ChangeHardwareAsync(scpId, rowVersion, scp => scp.RemoveReader(readerId), cancellationToken);
+
+    public Task<Result> AddDoorAsync(Guid scpId, DoorWriteDto dto, CancellationToken cancellationToken) =>
+        ChangeHardwareAsync(
+            scpId,
+            dto.RowVersion,
+            scp => scp.AddDoor(dto.Number, dto.Name, dto.EntryReaderId, dto.ExitReaderId, dto.LockOutputId,
+                dto.DoorContactInputId, dto.ExitButtonInputId, dto.StrikeMinSeconds, dto.StrikeMaxSeconds,
+                dto.HeldOpenSeconds, dto.AccessMode),
+            cancellationToken);
+
+    public Task<Result> UpdateDoorAsync(Guid scpId, Guid doorId, DoorWriteDto dto, CancellationToken cancellationToken) =>
+        ChangeHardwareAsync(
+            scpId,
+            dto.RowVersion,
+            scp => scp.UpdateDoor(doorId, dto.Number, dto.Name, dto.EntryReaderId, dto.ExitReaderId, dto.LockOutputId,
+                dto.DoorContactInputId, dto.ExitButtonInputId, dto.StrikeMinSeconds, dto.StrikeMaxSeconds,
+                dto.HeldOpenSeconds, dto.AccessMode),
+            cancellationToken);
+
+    public Task<Result> RemoveDoorAsync(Guid scpId, Guid doorId, byte[] rowVersion, CancellationToken cancellationToken) =>
+        ChangeHardwareAsync(scpId, rowVersion, scp => scp.RemoveDoor(doorId), cancellationToken);
+
     /// <summary>
     /// Load the whole controller aggregate, let the domain apply the change, then save against the row version the
     /// caller read — every hardware-layout change is concurrency-checked on the controller.

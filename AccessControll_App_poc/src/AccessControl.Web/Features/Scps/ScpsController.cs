@@ -236,7 +236,10 @@ public sealed partial class ScpsController(IScpService scpService) : ModalFormCo
         ScpErrors.ConcurrencyConflict or ScpErrors.DuplicateNumber or ScpErrors.DuplicateSerial
             or ScpErrors.DuplicateName or ScpErrors.NumberLocked
             or ScpErrors.DuplicateSioNumber or ScpErrors.DuplicateSioAddress or ScpErrors.DuplicateSioName
-            or ScpErrors.SioLimit or ScpErrors.InternalSio => StatusCodes.Status409Conflict,
+            or ScpErrors.SioLimit or ScpErrors.InternalSio or ScpErrors.SioInUse
+            or ScpErrors.DuplicateReaderNumber or ScpErrors.DuplicateReaderName
+            or ScpErrors.DuplicateDoorNumber or ScpErrors.DuplicateDoorName
+            or ScpErrors.ReaderInUse or ScpErrors.PointInUse or ScpErrors.DoorLimit => StatusCodes.Status409Conflict,
         _ => StatusCodes.Status422UnprocessableEntity,
     };
 
@@ -252,6 +255,10 @@ public sealed partial class ScpsController(IScpService scpService) : ModalFormCo
             ScpErrors.DuplicateSioNumber => nameof(AddSioFormViewModel.Number),
             ScpErrors.DuplicateSioAddress => nameof(AddSioFormViewModel.Address),
             ScpErrors.DuplicateSioName => nameof(AddSioFormViewModel.Name),
+            ScpErrors.DuplicateReaderNumber => nameof(ReaderFormViewModel.Number),
+            ScpErrors.DuplicateReaderName => nameof(ReaderFormViewModel.Name),
+            ScpErrors.DuplicateDoorNumber => nameof(DoorFormViewModel.Number),
+            ScpErrors.DuplicateDoorName => nameof(DoorFormViewModel.Name),
             _ => string.Empty,
         };
 

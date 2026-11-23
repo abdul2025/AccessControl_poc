@@ -19,6 +19,16 @@ public static class ScpErrors
     public const string DuplicateSioName = ScpEntity.DuplicateSioNameErrorCode;
     public const string SioLimit = ScpEntity.SioLimitErrorCode;
     public const string InternalSio = ScpEntity.InternalSioErrorCode;
+    public const string SioInUse = ScpEntity.SioInUseErrorCode;
+    public const string ReaderNotFound = ScpEntity.ReaderNotFoundErrorCode;
+    public const string DoorNotFound = ScpEntity.DoorNotFoundErrorCode;
+    public const string DuplicateReaderNumber = ScpEntity.DuplicateReaderNumberErrorCode;
+    public const string DuplicateReaderName = ScpEntity.DuplicateReaderNameErrorCode;
+    public const string DuplicateDoorNumber = ScpEntity.DuplicateDoorNumberErrorCode;
+    public const string DuplicateDoorName = ScpEntity.DuplicateDoorNameErrorCode;
+    public const string ReaderInUse = ScpEntity.ReaderInUseErrorCode;
+    public const string PointInUse = ScpEntity.PointInUseErrorCode;
+    public const string DoorLimit = ScpEntity.DoorLimitErrorCode;
 
     public const string NotFoundMessage = "The controller was not found.";
     public const string DuplicateNumberMessage = "Another controller already uses this SCP number.";

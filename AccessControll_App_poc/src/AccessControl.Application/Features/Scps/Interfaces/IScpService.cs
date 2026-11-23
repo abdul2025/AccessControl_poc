@@ -32,4 +32,18 @@ public interface IScpService
     Task<Result> UpdateInputAsync(Guid scpId, Guid inputId, UpdateInputDto dto, CancellationToken cancellationToken);
 
     Task<Result> UpdateOutputAsync(Guid scpId, Guid outputId, UpdateOutputDto dto, CancellationToken cancellationToken);
+
+    // Readers and doors.
+
+    Task<Result> AddReaderAsync(Guid scpId, ReaderWriteDto dto, CancellationToken cancellationToken);
+
+    Task<Result> UpdateReaderAsync(Guid scpId, Guid readerId, ReaderWriteDto dto, CancellationToken cancellationToken);
+
+    Task<Result> RemoveReaderAsync(Guid scpId, Guid readerId, byte[] rowVersion, CancellationToken cancellationToken);
+
+    Task<Result> AddDoorAsync(Guid scpId, DoorWriteDto dto, CancellationToken cancellationToken);
+
+    Task<Result> UpdateDoorAsync(Guid scpId, Guid doorId, DoorWriteDto dto, CancellationToken cancellationToken);
+
+    Task<Result> RemoveDoorAsync(Guid scpId, Guid doorId, byte[] rowVersion, CancellationToken cancellationToken);
 }

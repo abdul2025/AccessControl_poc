@@ -1,0 +1,58 @@
+@model ReaderFormViewModel
+
+<div asp-validation-summary="ModelOnly" class="notice notice--danger" role="alert"></div>
+<input type="hidden" asp-for="RowVersion" />
+
+@if (Model.SioOptions.Count == 0)
+{
+    <p class="notice notice--info" role="status">No SIO on this controller has reader ports.</p>
+}
+
+<div class="form-grid">
+    <div class="form-field">
+        <label asp-for="SioPanelId"></label>
+        <select asp-for="SioPanelId" asp-items="Model.SioItems()"></select>
+        <span asp-validation-for="SioPanelId" class="field-error"></span>
+    </div>
+    <div class="form-field">
+        <label asp-for="Number"></label>
+        <input asp-for="Number" type="number" min="0" max="3" aria-describedby="reader-number-hint" />
+        <span id="reader-number-hint" class="field-hint">Reader 0 = READER 1 terminal, reader 1 = READER 2 (to confirm on the bench).</span>
+        <span asp-validation-for="Number" class="field-error"></span>
+    </div>
+    <div class="form-field">
+        <label asp-for="Name"></label>
+        <input asp-for="Name" autocomplete="off" placeholder="e.g. Main gate IN" />
+        <span asp-validation-for="Name" class="field-error"></span>
+    </div>
+    <div class="form-field">
+        <label asp-for="Model"></label>
+        <input asp-for="Model" autocomplete="off" />
+        <span asp-validation-for="Model" class="field-error"></span>
+    </div>
+    <div class="form-field form-field--full">
+        <label asp-for="Interface"></label>
+        <select asp-for="Interface" asp-items="ScpLabels.ReaderInterfaceOptions()" data-mode-select aria-describedby="interface-hint"></select>
+        <span id="interface-hint" class="field-hint">OSDP is the target for the VL70LF; use Wiegand if the reader is wired that way.</span>
+        <span asp-validation-for="Interface" class="field-error"></span>
+    </div>
+    <div class="form-field" data-mode-group="Osdp">
+        <label asp-for="OsdpAddress"></label>
+        <input asp-for="OsdpAddress" type="number" min="0" max="@Reader.MaxOsdpAddress" />
+        <span class="field-hint">0-3, as set on the reader.</span>
+        <span asp-validation-for="OsdpAddress" class="field-error"></span>
+    </div>
+    <div class="form-field" data-mode-group="Osdp">
+        <label asp-for="OsdpBaudRate"></label>
+        <select asp-for="OsdpBaudRate" asp-items="ScpLabels.BaudRateOptions()"></select>
+        <span asp-validation-for="OsdpBaudRate" class="field-error"></span>
+    </div>
+    <div class="form-field form-field--full" data-mode-group="Osdp">
+        <label class="checkbox-field"><input asp-for="SecureChannel" /> @Html.DisplayNameFor(model => model.SecureChannel)</label>
+        <span class="field-hint">Encrypts reader traffic. Recommended in production if the reader supports it.</span>
+    </div>
+    <div class="form-field form-field--full" data-mode-group="Wiegand">
+        <label class="checkbox-field"><input asp-for="HasKeypad" /> @Html.DisplayNameFor(model => model.HasKeypad)</label>
+        <span class="field-hint">Needed for "Card and PIN" / "Card or PIN" doors on Wiegand readers.</span>
+    </div>
+</div>

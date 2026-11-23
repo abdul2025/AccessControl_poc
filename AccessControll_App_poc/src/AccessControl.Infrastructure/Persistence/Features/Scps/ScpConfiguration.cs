@@ -39,6 +39,12 @@ internal sealed class ScpConfiguration : IEntityTypeConfiguration<Scp>
         builder.HasMany(scp => scp.SioPanels).WithOne().HasForeignKey("ScpId").IsRequired().OnDelete(DeleteBehavior.Cascade);
         builder.Navigation(scp => scp.SioPanels).UsePropertyAccessMode(PropertyAccessMode.Field);
 
+        // Readers and doors belong to the controller aggregate as well.
+        builder.HasMany(scp => scp.Readers).WithOne().HasForeignKey("ScpId").IsRequired().OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(scp => scp.Readers).UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.HasMany(scp => scp.Doors).WithOne().HasForeignKey("ScpId").IsRequired().OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(scp => scp.Doors).UsePropertyAccessMode(PropertyAccessMode.Field);
+
         // Live rows only: a deleted controller's SCP number and serial can be reused.
         builder.HasIndex(scp => scp.ScpNumber).HasDatabaseName(ScpNumberIndexName).IsUnique().HasFilter(NotDeletedFilter);
         builder.HasIndex(scp => scp.SerialNumber)

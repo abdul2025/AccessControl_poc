@@ -1,0 +1,30 @@
+﻿@model RemoveItemViewModel
+@{
+    var isModal = ViewData[AccessControl.Web.Controllers.ModalFormController.IsModalViewDataKey] is true;
+}
+
+<form action="@Context.Request.Path@Context.Request.QueryString" method="post" asp-antiforgery="true" novalidate data-modal-form>
+    <div class="modal-header">
+        <div>
+            <p class="eyebrow">@Model.ScpDisplayName</p>
+            <h2 class="modal-title" id="hardware-form-title">@Model.Title</h2>
+        </div>
+        <partial name="_FormCloseButton" />
+    </div>
+    <div class="modal-body">
+        <input type="hidden" name="rowVersion" value="@Model.RowVersion" />
+        <partial name="_StatusMessages" />
+        <p>@Model.Summary</p>
+        @if (Model.BlockedReason is { } reason)
+        {
+            <p class="notice notice--danger" role="alert">@reason</p>
+        }
+    </div>
+    <div class="modal-footer">
+        <a class="button button--secondary" asp-action="Details" asp-route-id="@Model.ScpId" data-bs-dismiss="@(isModal ? "modal" : null)">Cancel</a>
+        @if (Model.BlockedReason is null)
+        {
+            <button type="submit" class="button button--danger">Remove</button>
+        }
+    </div>
+</form>

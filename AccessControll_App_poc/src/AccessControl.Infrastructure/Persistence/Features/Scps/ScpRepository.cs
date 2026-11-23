@@ -87,6 +87,22 @@ internal sealed class ScpRepository(AccessControlDbContext dbContext) : IScpRepo
                             .ToList(),
                     })
                     .ToList(),
+                Readers = scp.Readers
+                    .Select(reader => new
+                    {
+                        reader.Id,
+                        reader.SioPanelId,
+                        reader.Number,
+                        reader.Name,
+                        reader.Model,
+                        reader.Interface,
+                        reader.OsdpAddress,
+                        reader.OsdpBaudRate,
+                        reader.SecureChannel,
+                        reader.HasKeypad,
+                    })
+                    .ToList(),
+                Doors = scp.Doors.OrderBy(door => door.Number).ToList(),
                 RowVersion = EF.Property<byte[]>(scp, AccessControlDbContext.RowVersionPropertyName),
             })
             .AsSplitQuery()
@@ -113,6 +129,54 @@ internal sealed class ScpRepository(AccessControlDbContext dbContext) : IScpRepo
                 panel.Outputs))
             .ToList();
 
+        // Display names for readers and door points are resolved in memory from the rows already loaded.
+        var sioNumbers = panels.ToDictionary(panel => panel.Id, panel => panel.Number);
+        var readers = row.Readers
+            .Select(reader => new ReaderDto(
+                reader.Id,
+                reader.SioPanelId,
+                sioNumbers.GetValueOrDefault(reader.SioPanelId),
+                reader.Number,
+                reader.Name,
+                reader.Model,
+                reader.Interface,
+                reader.OsdpAddress,
+                reader.OsdpBaudRate,
+                reader.SecureChannel,
+                reader.HasKeypad))
+            .OrderBy(reader => reader.SioNumber)
+            .ThenBy(reader => reader.Number)
+            .ToList();
+
+        var readerNames = readers.ToDictionary(reader => reader.Id, reader => reader.Name);
+        var inputNames = panels.SelectMany(panel => panel.Inputs.Select(point => (point.Id, Name: $"SIO {panel.Number} · {point.Name}")))
+            .ToDictionary(pair => pair.Id, pair => pair.Name);
+        var outputNames = panels.SelectMany(panel => panel.Outputs.Select(point => (point.Id, Name: $"SIO {panel.Number} · {point.Name}")))
+            .ToDictionary(pair => pair.Id, pair => pair.Name);
+
+        string? NameOf(Dictionary<Guid, string> names, Guid? id) => id is { } value ? names.GetValueOrDefault(value) : null;
+
+        var doors = row.Doors
+            .Select(door => new DoorDto(
+                door.Id,
+                door.Number,
+                door.Name,
+                door.EntryReaderId,
+                readerNames.GetValueOrDefault(door.EntryReaderId) ?? "?",
+                door.ExitReaderId,
+                NameOf(readerNames, door.ExitReaderId),
+                door.LockOutputId,
+                outputNames.GetValueOrDefault(door.LockOutputId) ?? "?",
+                door.DoorContactInputId,
+                NameOf(inputNames, door.DoorContactInputId),
+                door.ExitButtonInputId,
+                NameOf(inputNames, door.ExitButtonInputId),
+                door.StrikeMinSeconds,
+                door.StrikeMaxSeconds,
+                door.HeldOpenSeconds,
+                door.AccessMode))
+            .ToList();
+
         return new ScpDto(
             scp.Id,
             scp.SiteId,
@@ -137,6 +201,9 @@ internal sealed class ScpRepository(AccessControlDbContext dbContext) : IScpRepo
             scp.CanChangeScpNumber,
             panels,
             Scp.NextFreeSioNumber(panels.Select(panel => panel.Number)),
+            readers,
+            doors,
+            Scp.NextFreeDoorNumber(doors.Select(door => door.Number)),
             scp.CreatedAtUtc,
             scp.CreatedBy,
             scp.UpdatedAtUtc,
@@ -149,6 +216,8 @@ internal sealed class ScpRepository(AccessControlDbContext dbContext) : IScpRepo
         dbContext.Scps
             .Include(scp => scp.SioPanels).ThenInclude(panel => panel.Inputs)
             .Include(scp => scp.SioPanels).ThenInclude(panel => panel.Outputs)
+            .Include(scp => scp.Readers)
+            .Include(scp => scp.Doors)
             .AsSplitQuery()
             .SingleOrDefaultAsync(scp => scp.Id == id, cancellationToken);
 
@@ -228,7 +297,8 @@ internal sealed class ScpRepository(AccessControlDbContext dbContext) : IScpRepo
         // Removing the root cascades "Deleted" to its loaded children immediately. The controller is only
         // soft-deleted, so its hardware layout rows stay as they are (history and a possible restore keep them).
         foreach (var child in dbContext.ChangeTracker.Entries()
-                     .Where(entry => entry.Entity is SioPanel or InputPoint or OutputPoint && entry.State == EntityState.Deleted))
+                     .Where(entry => entry.Entity is SioPanel or InputPoint or OutputPoint or Reader or Door
+                                     && entry.State == EntityState.Deleted))
         {
             child.State = EntityState.Unchanged;
         }

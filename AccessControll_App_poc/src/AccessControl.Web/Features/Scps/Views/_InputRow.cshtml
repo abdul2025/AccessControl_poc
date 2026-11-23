@@ -1,4 +1,4 @@
-@model (Guid ScpId, InputPointDto Input)
+@model (Guid ScpId, InputPointDto Input, string? UsedBy)
 @{
     var input = Model.Input;
 }
@@ -15,6 +15,7 @@
     <td>@ScpLabels.ToShortLabel(input.Contact)</td>
     <td>@(input.Supervised ? "Yes" : "No")</td>
     <td>@(input.Monitored ? "Yes" : "No")</td>
+    <td>@(Model.UsedBy ?? "—")</td>
     <td class="actions-cell">
         <a asp-action="EditInput" asp-route-id="@Model.ScpId" asp-route-inputId="@input.Id" data-modal aria-label="Edit input @input.Name" title="Edit">Edit</a>
     </td>

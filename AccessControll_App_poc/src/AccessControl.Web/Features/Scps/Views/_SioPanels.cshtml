@@ -1,6 +1,13 @@
 @model ScpDetailsViewModel
 @{
     var scp = Model.Scp;
+    var usedBy = new Dictionary<Guid, string>();
+    foreach (var door in scp.Doors)
+    {
+        usedBy[door.LockOutputId] = $"Door {door.Number} lock";
+        if (door.DoorContactInputId is { } contact) { usedBy[contact] = $"Door {door.Number} contact"; }
+        if (door.ExitButtonInputId is { } exitButton) { usedBy[exitButton] = $"Door {door.Number} exit button"; }
+    }
 }
 
 <section id="sio-panels" aria-labelledby="scp-sios-title">
@@ -46,13 +53,14 @@
                                 <th scope="col">Contact</th>
                                 <th scope="col">Supervised</th>
                                 <th scope="col">Monitored</th>
+                                <th scope="col">Used by</th>
                                 <th scope="col"><span class="visually-hidden">Actions</span></th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var input in panel.Inputs.Where(point => point.Dedicated == DedicatedInput.None))
                             {
-                                <partial name="_InputRow" model="(scp.Id, input)" />
+                                <partial name="_InputRow" model="(scp.Id, input, usedBy.GetValueOrDefault(input.Id))" />
                             }
                         </tbody>
                     </table>
@@ -71,13 +79,14 @@
                                 <th scope="col">Contact</th>
                                 <th scope="col">Supervised</th>
                                 <th scope="col">Monitored</th>
+                                <th scope="col">Used by</th>
                                 <th scope="col"><span class="visually-hidden">Actions</span></th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var input in panel.Inputs.Where(point => point.Dedicated != DedicatedInput.None))
                             {
-                                <partial name="_InputRow" model="(scp.Id, input)" />
+                                <partial name="_InputRow" model="(scp.Id, input, usedBy.GetValueOrDefault(input.Id))" />
                             }
                         </tbody>
                     </table>
@@ -91,6 +100,7 @@
                                 <th scope="col">#</th>
                                 <th scope="col">Name</th>
                                 <th scope="col">Pulse (s)</th>
+                                <th scope="col">Used by</th>
                                 <th scope="col"><span class="visually-hidden">Actions</span></th>
                             </tr>
                         </thead>
@@ -101,6 +111,7 @@
                                     <th scope="row">@output.Number</th>
                                     <td>@output.Name</td>
                                     <td>@output.PulseSeconds</td>
+                                    <td>@(usedBy.GetValueOrDefault(output.Id) ?? "—")</td>
                                     <td class="actions-cell">
                                         <a asp-action="EditOutput" asp-route-id="@scp.Id" asp-route-outputId="@output.Id" data-modal aria-label="Edit relay @output.Name" title="Edit">Edit</a>
                                     </td>

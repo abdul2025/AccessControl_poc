@@ -1,6 +1,6 @@
 # Plan — Step 3: SIO panels, I/O points, readers and doors
 
-> Status: **proposed, awaiting approval** · 2026-11-23 · spec reference: `docs/PROJECT_SPEC.md` §3.6 step 3, §3.7, §4, §6.4, §7.1–7.3
+> Status: **implemented** — 3a and 3b done 2026-11-23 (decision on Tamper / AC / Battery: `tamper-ac-battery-inputs.md`) · spec reference: `docs/PROJECT_SPEC.md` §3.6 step 3, §3.7, §4, §6.4, §7.1–7.3
 > Plan only — no code changed yet.
 
 ## 1. Outcome and acceptance criteria

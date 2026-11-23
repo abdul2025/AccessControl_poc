@@ -1,0 +1,7 @@
+﻿@model DoorFormViewModel
+@{ ViewData["Title"] = "Edit door"; }
+
+@* Full-page fallback when JavaScript is unavailable; the same form opens in a modal otherwise. *@
+<section class="form-card form-card--page" aria-labelledby="hardware-form-title">
+    <partial name="_EditDoorForm" model="Model" />
+</section>

@@ -1,0 +1,87 @@
+@model DoorFormViewModel
+
+<div asp-validation-summary="ModelOnly" class="notice notice--danger" role="alert"></div>
+<input type="hidden" asp-for="RowVersion" />
+
+@if (Model.ReaderOptions.Count == 0 || Model.RelayOptions.Count == 0)
+{
+    <p class="notice notice--info" role="status">A door needs a free reader and a free relay. Add a reader first, or free one from another door.</p>
+}
+
+<div class="form-grid">
+    <div class="form-field">
+        <label asp-for="Number"></label>
+        <input asp-for="Number" type="number" min="0" max="63" />
+        <span asp-validation-for="Number" class="field-error"></span>
+    </div>
+    <div class="form-field">
+        <label asp-for="Name"></label>
+        <input asp-for="Name" autocomplete="off" placeholder="e.g. Main gate" />
+        <span asp-validation-for="Name" class="field-error"></span>
+    </div>
+
+    <div class="form-field">
+        <label asp-for="EntryReaderId"></label>
+        <select asp-for="EntryReaderId" asp-items="DoorFormViewModel.Items(Model.ReaderOptions)">
+            <option value="">Select a reader</option>
+        </select>
+        <span asp-validation-for="EntryReaderId" class="field-error"></span>
+    </div>
+    <div class="form-field">
+        <label asp-for="ExitReaderId"></label>
+        <select asp-for="ExitReaderId" asp-items="DoorFormViewModel.Items(Model.ReaderOptions)">
+            <option value="">None</option>
+        </select>
+        <span class="field-hint">Reader on the inside, if people also badge to leave.</span>
+        <span asp-validation-for="ExitReaderId" class="field-error"></span>
+    </div>
+
+    <div class="form-field">
+        <label asp-for="LockOutputId"></label>
+        <select asp-for="LockOutputId" asp-items="DoorFormViewModel.Items(Model.RelayOptions)">
+            <option value="">Select a relay</option>
+        </select>
+        <span class="field-hint">The relay wired to the strike or magnetic lock.</span>
+        <span asp-validation-for="LockOutputId" class="field-error"></span>
+    </div>
+    <div class="form-field">
+        <label asp-for="AccessMode"></label>
+        <select asp-for="AccessMode" asp-items="ScpLabels.AccessModeOptions()"></select>
+        <span asp-validation-for="AccessMode" class="field-error"></span>
+    </div>
+
+    <div class="form-field">
+        <label asp-for="DoorContactInputId"></label>
+        <select asp-for="DoorContactInputId" asp-items="DoorFormViewModel.Items(Model.InputOptions)">
+            <option value="">None</option>
+        </select>
+        <span class="field-hint">Detects door forced / held open. Usually normally closed.</span>
+        <span asp-validation-for="DoorContactInputId" class="field-error"></span>
+    </div>
+    <div class="form-field">
+        <label asp-for="ExitButtonInputId"></label>
+        <select asp-for="ExitButtonInputId" asp-items="DoorFormViewModel.Items(Model.InputOptions)">
+            <option value="">None</option>
+        </select>
+        <span class="field-hint">Request-to-exit button. Usually normally open.</span>
+        <span asp-validation-for="ExitButtonInputId" class="field-error"></span>
+    </div>
+
+    <div class="form-field">
+        <label asp-for="StrikeMinSeconds"></label>
+        <input asp-for="StrikeMinSeconds" type="number" min="1" max="@Door.MaxStrikeSeconds" />
+        <span asp-validation-for="StrikeMinSeconds" class="field-error"></span>
+    </div>
+    <div class="form-field">
+        <label asp-for="StrikeMaxSeconds"></label>
+        <input asp-for="StrikeMaxSeconds" type="number" min="1" max="@Door.MaxStrikeSeconds" />
+        <span class="field-hint">The lock relocks when the door opens, or after this time.</span>
+        <span asp-validation-for="StrikeMaxSeconds" class="field-error"></span>
+    </div>
+    <div class="form-field">
+        <label asp-for="HeldOpenSeconds"></label>
+        <input asp-for="HeldOpenSeconds" type="number" min="1" max="@Door.MaxHeldOpenSeconds" />
+        <span class="field-hint">300 s = 5 minutes (Security asked for 5-10 minutes).</span>
+        <span asp-validation-for="HeldOpenSeconds" class="field-error"></span>
+    </div>
+</div>
