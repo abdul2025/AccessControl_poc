@@ -1,0 +1,21 @@
+@model ScpDetailsViewModel
+
+<form asp-action="Delete" asp-route-id="@Model.Id" method="post" novalidate data-modal-form>
+    <div class="modal-header">
+        <div>
+            <p class="eyebrow">Controllers</p>
+            <h2 class="modal-title" id="scp-form-title">Delete @Model.DisplayName?</h2>
+        </div>
+        <partial name="_FormCloseButton" />
+    </div>
+    <div class="modal-body">
+        <input type="hidden" name="rowVersion" value="@Model.RowVersion" />
+        <partial name="_StatusMessages" />
+        <p>The controller is removed from the configuration. Its SCP number and serial number can be used again.</p>
+        <partial name="_ScpSummary" model="Model" />
+    </div>
+    <div class="modal-footer">
+        <a class="button button--secondary" asp-action="Details" asp-route-id="@Model.Id" data-bs-dismiss="@(ViewData[AccessControl.Web.Controllers.ModalFormController.IsModalViewDataKey] is true ? "modal" : null)">Cancel</a>
+        <button type="submit" class="button button--danger">Delete</button>
+    </div>
+</form>

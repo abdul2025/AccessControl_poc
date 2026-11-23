@@ -1,0 +1,73 @@
+@model SiteDetailsViewModel
+@{
+    ViewData["Title"] = $"Site {Model.Code}";
+}
+
+<section class="form-card" aria-labelledby="details-title">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">Site</p>
+            <h1 id="details-title">@Model.Code — @Model.Name</h1>
+        </div>
+        <div class="form-actions">
+            <a class="button button--secondary" asp-action="Edit" asp-route-id="@Model.Id" data-modal>Edit</a>
+            <a class="button button--secondary" asp-action="Delete" asp-route-id="@Model.Id" data-modal>Delete</a>
+        </div>
+    </div>
+
+    <partial name="_SiteSummary" model="Model" />
+
+    <section aria-labelledby="site-scps-title">
+        <div class="section-heading">
+            <h2 id="site-scps-title">Controllers</h2>
+            <a class="button button--primary" asp-controller="Scps" asp-action="Create" asp-route-siteId="@Model.Id" data-modal>New controller</a>
+        </div>
+        @if (!Model.HasScps)
+        {
+            <p class="empty-state">No controllers on this site yet.</p>
+        }
+        else
+        {
+            <div class="table-card">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">SCP</th>
+                            <th scope="col">Name</th>
+                            <th scope="col">Connection</th>
+                            <th scope="col">Configuration</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var scp in Model.Scps)
+                        {
+                            <tr>
+                                <th scope="row">@scp.ScpNumber</th>
+                                <td><a asp-controller="Scps" asp-action="Details" asp-route-id="@scp.Id">@scp.Name</a></td>
+                                <td>@ScpLabels.ToLabel(scp.ConnectionMode)</td>
+                                <td><partial name="_ScpSyncStatusBadge" model="scp.SyncStatus" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    <dl class="detail-list detail-list--audit">
+        <dt>Created</dt>
+        <dd><time datetime="@AuditDisplay.Iso(Model.CreatedAtUtc)">@AuditDisplay.Format(Model.CreatedAtUtc)</time></dd>
+        <dt>Created by</dt>
+        <dd>@AuditDisplay.User(Model.CreatedBy)</dd>
+        <dt>Last updated</dt>
+        <dd>@AuditDisplay.Format(Model.UpdatedAtUtc)</dd>
+        <dt>Last updated by</dt>
+        <dd>@AuditDisplay.User(Model.UpdatedBy)</dd>
+        <dt>Record ID</dt>
+        <dd><code>@Model.Id</code></dd>
+    </dl>
+
+    <div class="form-actions">
+        <a class="button button--secondary" asp-action="Index">Back to sites</a>
+    </div>
+</section>

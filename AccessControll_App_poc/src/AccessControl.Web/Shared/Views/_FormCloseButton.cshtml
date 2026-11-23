@@ -1,0 +1,5 @@
+@* Close (X) for a form header — only inside the modal; the full-page fallback has no modal to close. *@
+@if (ViewData[AccessControl.Web.Controllers.ModalFormController.IsModalViewDataKey] is true)
+{
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+}

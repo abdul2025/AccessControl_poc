@@ -1,0 +1,23 @@
+@model SiteFormViewModel
+
+<div asp-validation-summary="ModelOnly" class="notice notice--danger" role="alert"></div>
+<input type="hidden" asp-for="RowVersion" />
+
+<div class="form-grid">
+    <div class="form-field">
+        <label asp-for="Code"></label>
+        <input asp-for="Code" autocomplete="off" aria-describedby="site-code-hint" />
+        <span id="site-code-hint" class="field-hint">Short unique code, e.g. HQ. Stored in upper case.</span>
+        <span asp-validation-for="Code" class="field-error"></span>
+    </div>
+    <div class="form-field">
+        <label asp-for="Name"></label>
+        <input asp-for="Name" autocomplete="off" />
+        <span asp-validation-for="Name" class="field-error"></span>
+    </div>
+    <div class="form-field form-field--full">
+        <label asp-for="Description"></label>
+        <textarea asp-for="Description" rows="3"></textarea>
+        <span asp-validation-for="Description" class="field-error"></span>
+    </div>
+</div>

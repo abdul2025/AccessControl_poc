@@ -1,0 +1,26 @@
+@model ScpDetailsViewModel
+@{
+    var scp = Model.Scp;
+}
+
+<dl class="detail-list">
+    <dt>Name</dt>
+    <dd>@scp.Name</dd>
+    <dt>SCP number</dt>
+    <dd>@scp.ScpNumber</dd>
+    <dt>Site</dt>
+    <dd>@scp.SiteCode — @scp.SiteName</dd>
+    <dt>Model</dt>
+    <dd>@ScpLabels.ToLabel(scp.Model)</dd>
+    <dt>Connection mode</dt>
+    <dd>@ScpLabels.ToLabel(scp.ConnectionMode)</dd>
+    <dt>Serial number</dt>
+    <dd>@AuditDisplay.Optional(scp.SerialNumber)</dd>
+    @if (scp.ConnectionMode == ConnectionMode.IpServer)
+    {
+        <dt>IP address</dt>
+        <dd>@scp.IpAddress : @scp.Port</dd>
+    }
+    <dt>Description</dt>
+    <dd>@AuditDisplay.Optional(scp.Description)</dd>
+</dl>

@@ -1,15 +1,18 @@
+using AccessControl.Domain.Entities;
+
 namespace AccessControl.Infrastructure.Aero;
 
 /// <summary>
-/// Memory allocation values for commands 1107 and 1105 (docs/PROJECT_SPEC.md §6.3). Used for every controller
-/// until step 2 stores them per controller. Changing any value on a configured controller requires command 301
-/// (reset), which erases its database (spec §3.7 rule 4a) — do not edit casually.
+/// Memory allocation values for commands 1107 and 1105 (docs/PROJECT_SPEC.md §6.3). The per-controller values
+/// (events, cards, levels per card) come from <see cref="ScpAllocation.Default"/> so the Gateway and the stored
+/// controller records cannot drift; step 4 switches to each controller's own stored allocation. Changing any value on
+/// a configured controller requires command 301 (reset), which erases its database (spec §3.7 rule 4a).
 /// </summary>
 internal static class ControllerAllocationDefaults
 {
     // Command 1107 — SCP Device Specification
     public const short Msp1Ports = 3;              // internal + RS-485 port 1 + port 2
-    public const int Transactions = 60000;         // HID recommends >= 60000 (≈ 58,000 stored)
+    public static readonly int Transactions = ScpAllocation.Default.Transactions;   // HID recommends >= 60000
     public const short Sios = 32;
     public const short MonitorPoints = 615;        // X1100 maximum
     public const short ControlPoints = 388;        // X1100 maximum
@@ -25,8 +28,8 @@ internal static class ControllerAllocationDefaults
     public const short OperatingModes = 1;
 
     // Command 1105 — Access Database Specification
-    public const int Cards = 100000;
-    public const short AccessLevelsPerCard = 32;   // removes IDCube's 8-groups-per-card limit
+    public static readonly int Cards = ScpAllocation.Default.Cards;
+    public static readonly short AccessLevelsPerCard = ScpAllocation.Default.AccessLevelsPerCard;   // removes the IDCube 8-groups-per-card limit
     public const short PinDigitsField = 68;        // cardIDSize 4 bytes, 4 PIN digits, no duress (Getting Started 04)
     public const short IssueCode = 1;
     public const short AntiPassbackLocation = 1;

@@ -1,0 +1,93 @@
+@model ScpDetailsViewModel
+@{
+    var scp = Model.Scp;
+    ViewData["Title"] = Model.DisplayName;
+}
+
+<section class="form-card" aria-labelledby="details-title">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">Controller · <a asp-controller="Sites" asp-action="Details" asp-route-id="@scp.SiteId">@scp.SiteCode</a></p>
+            <h1 id="details-title">@Model.DisplayName</h1>
+        </div>
+        <div class="form-actions">
+            <a class="button button--secondary" asp-action="Edit" asp-route-id="@scp.Id" data-modal>Edit</a>
+            <a class="button button--secondary" asp-action="Delete" asp-route-id="@scp.Id" data-modal>Delete</a>
+        </div>
+    </div>
+
+    <partial name="_ScpSummary" model="Model" />
+
+    <section aria-labelledby="scp-config-title">
+        <h2 id="scp-config-title">Configuration</h2>
+        <dl class="detail-list">
+            <dt>Status</dt>
+            <dd><partial name="_ScpSyncStatusBadge" model="scp.SyncStatus" /></dd>
+            <dt>Published version</dt>
+            <dd>@AuditDisplay.Optional(scp.PublishedVersion)</dd>
+            <dt>Applied version</dt>
+            <dd>@AuditDisplay.Optional(scp.AppliedVersion)</dd>
+        </dl>
+        <p class="field-hint">
+            The configuration is saved here and applied to the controller by the Gateway once it is published
+            (publishing arrives in a later step).
+        </p>
+    </section>
+
+    <section aria-labelledby="scp-sios-title">
+        <h2 id="scp-sios-title">I/O panels (SIO)</h2>
+        <div class="table-card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th scope="col">SIO</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Model</th>
+                        <th scope="col">Port</th>
+                        <th scope="col">Address</th>
+                        <th scope="col">Inputs</th>
+                        <th scope="col">Outputs</th>
+                        <th scope="col">Reader ports</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var panel in scp.SioPanels)
+                    {
+                        <tr>
+                            <th scope="row">@panel.Number</th>
+                            <td>@panel.Name</td>
+                            <td>@ScpLabels.ToLabel(panel.Model)</td>
+                            <td>@ScpLabels.ToLabel(panel.Port)</td>
+                            <td>@panel.Address</td>
+                            <td>@panel.Inputs</td>
+                            <td>@panel.Outputs</td>
+                            <td>@panel.ReaderPorts</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section aria-labelledby="scp-allocation-title">
+        <h2 id="scp-allocation-title">Advanced — memory allocation</h2>
+        <partial name="_ScpAllocation" model="scp.Allocation" />
+    </section>
+
+    <dl class="detail-list detail-list--audit">
+        <dt>Created</dt>
+        <dd><time datetime="@AuditDisplay.Iso(scp.CreatedAtUtc)">@AuditDisplay.Format(scp.CreatedAtUtc)</time></dd>
+        <dt>Created by</dt>
+        <dd>@AuditDisplay.User(scp.CreatedBy)</dd>
+        <dt>Last updated</dt>
+        <dd>@AuditDisplay.Format(scp.UpdatedAtUtc)</dd>
+        <dt>Last updated by</dt>
+        <dd>@AuditDisplay.User(scp.UpdatedBy)</dd>
+        <dt>Record ID</dt>
+        <dd><code>@scp.Id</code></dd>
+    </dl>
+
+    <div class="form-actions">
+        <a class="button button--secondary" asp-action="Index">Back to controllers</a>
+    </div>
+</section>

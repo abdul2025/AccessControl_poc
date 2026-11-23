@@ -30,10 +30,17 @@ public abstract class ModalFormController : Controller
         }
     }
 
+    /// <summary>
+    /// ViewData key telling form partials whether they render inside the modal. Modal-only markup (the close button,
+    /// <c>data-bs-dismiss</c>) must not appear on the full-page fallback, where there is no modal to close.
+    /// </summary>
+    public const string IsModalViewDataKey = "IsModal";
+
     /// <summary>Renders the form as modal content (partial <c>_{action}Form</c>) or as the full page <c>{action}</c>.</summary>
     protected IActionResult FormView(string action, object model, int statusCode = StatusCodes.Status200OK)
     {
         Response.StatusCode = statusCode;
+        ViewData[IsModalViewDataKey] = IsModalRequest;
         return IsModalRequest ? PartialView($"_{action}Form", model) : View(action, model);
     }
 

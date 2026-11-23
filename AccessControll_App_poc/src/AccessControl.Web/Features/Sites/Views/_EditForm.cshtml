@@ -1,0 +1,18 @@
+@model SiteFormViewModel
+
+<form asp-action="Edit" asp-route-id="@ViewContext.RouteData.Values["id"]" method="post" novalidate data-modal-form>
+    <div class="modal-header">
+        <div>
+            <p class="eyebrow">Sites</p>
+            <h2 class="modal-title" id="site-form-title">Edit site</h2>
+        </div>
+        <partial name="_FormCloseButton" />
+    </div>
+    <div class="modal-body">
+        <partial name="_SiteForm" model="Model" />
+    </div>
+    <div class="modal-footer">
+        <a class="button button--secondary" asp-action="Details" asp-route-id="@ViewContext.RouteData.Values["id"]" data-bs-dismiss="@(ViewData[AccessControl.Web.Controllers.ModalFormController.IsModalViewDataKey] is true ? "modal" : null)">Cancel</a>
+        <button type="submit" class="button button--primary">Save</button>
+    </div>
+</form>

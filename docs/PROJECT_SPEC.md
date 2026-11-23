@@ -209,6 +209,8 @@ AccessControl.Web/
   Features/{Feature}/              Controller, Models/, Views/   (code-style MVC slice, modal forms, live refresh)
 ```
 
+**Naming (decided 2026-11-23):** the HID controller is called **`Scp`** in code — entity `Scp`, feature folder `Scps`, MVC `ScpsController`, route `/Scps`, related types `SioPanel`, `ScpConfigVersion`, `PendingScp`, `ScpSyncStatus`. It matches the SDK vocabulary (`nSCPId`, SCP number) and avoids clashing with MVC's `Controller`. **UI labels say "Controller"** ("New controller", "Controller: Main gate"). Where this spec says *Controller* / *Controllers* for the entity or table, read `Scp` / `Scps`.
+
 ### 3.5 Rules
 
 1. **Single owner of the driver.** Exactly one `AeroDriverHost` per process. The driver is thread-safe, but initialization (cmd 11), channel creation and shutdown happen once.
@@ -229,7 +231,7 @@ Each step is finished across all layers and builds cleanly before the next (code
 |---|---|---|---|
 | 0 | Scaffold solution + shared kernel ✅ (2026-11-22). First migration deferred to step 2 — with no entities it would be empty | empty Web + Gateway running | code-style |
 | 1 | **Gateway skeleton** ✅ code (2026-11-22), bench pending: driver lifetime (11/12/203), message pump, command writer (tag → CmndStatus/NAK), reply mappers, IP Client listener, acceptance 1107 → 1105 → 1116 → 302 → 303; replies **logged** (tables arrive in step 2). Acceptance is governed by the temporary `Aero:AutoAcceptControllers` flag (true only in Development) until step 4 matches controllers by serial. 203 is the only string command (no wrapper enum entry). | X1100 connects; ID report + comm status in the log | §5 |
-| 2 | **Sites & Controllers** in MVC: CRUD, model catalog, internal SIO 0 auto-created, connection mode, serial number; first migration | controller registry (desired state, not yet applied) | §3.7, §4 |
+| 2 | **Sites & Controllers** ✅ (2026-11-23) in MVC (`Sites`, `Scps` → UI "Controllers"): CRUD, model catalog (`Domain/Catalog/HardwareCatalog`), internal SIO 0 auto-created, connection mode (IP Client: serial required, no IP; IP Server: IP + port 3001), allocation stored per controller (`ScpAllocation`: GMT offset editable at creation only; events / cards / levels display-only at §6.3 defaults until card-size limits are validated), soft delete, a site with controllers cannot be deleted; migration `AddSitesAndScps` applied | controller registry (desired state, not yet applied) | §3.7, §4 |
 | 3 | **SIO panels, inputs/outputs, readers, doors** in MVC — saved only | full hardware configuration per controller in the DB | §3.7, §6.4, §7.1–7.3 |
 | 4 | **Publish + provisioning engine**: publish versions, match/adopt controllers, build & apply the command list, record OK/NAK, `AppliedVersion`, re-apply on reconnect; live status page | the X1100 is configured from the DB | §3.7, §5, §6 |
 | 5 | **Card formats** (+ raw 3:1 capture view to discover VL70LF format) | 1102 | §7.4 |
@@ -277,7 +279,7 @@ MVC (user)                                  DB                                  
 | 4 | **Controller matching by serial number** entered by the user (IP Client). An unregistered controller that connects appears as **Pending controller** (serial, model, firmware, MAC from the ID report). It is **not** accepted (no 1107), so the driver detaches it after `provisioning_time`; it retries and stays listed until a user adopts it (links to a record) or rejects it. On adoption the Gateway programs the controller's ID with **318** = the record's SCP number, so the driver assigns that ID on later connections (SDK §14.11 default behaviour). New controllers ship with ID **1**, so the first unconfigured controller may arrive as SCP 1. |
 | 4a | **Allocation changes need a reset.** Changing 1107 (capacities, GMT offset, number of SIOs/points/readers…) or 1105 (card record layout) requires **301 Reset SCP** first (SDK §5.15), which **erases the controller's database and its unreported transactions**. These fields are therefore set once at creation; changing them is a separate, explicitly confirmed "Re-initialize controller" action that first collects pending transactions, then 301, then a full download. |
 | 4b | **Firmware tracking.** The ID report firmware version is stored; a mismatch with the supported version is flagged in the UI (SDK §5.13). |
-| 5 | **Connection mode per controller** (IP Client default / IP Server). IP Server needs the controller IP; on publish the Gateway sends 1013 + 207 itself. |
+| 5 | **Connection mode per controller** (IP Client default / IP Server). IP Server needs the controller IP; on publish the Gateway sends 1013 + 207 itself. Network / host-comm settings themselves are commissioned manually on the controller and are read-only in our software (§5.2.1). |
 | 6 | **Model catalog** (Domain): per model the SIO model code and I/O/reader counts — X1100 internal 196: 7 in / 4 out / 2 reader ports (4 reader slots); X100 193: 7/4/2; X200 194: 19/2/0; X300 195: 5/12/0. Creating an X1100 auto-creates SIO 0 with its points. |
 | 7 | **Domain validation:** unique SCP number; max 16 SIOs per RS-485 port, unique address per port; point/reader numbers within the model's counts; a door references a reader, lock output, contact and exit inputs on the same controller. |
 | 8 | **User-facing vs derived:** users enter names, types (door contact, exit button, lock, aux…), NO/NC, ports, addresses, reader interface (OSDP/Wiegand, address, secure channel), door timings. SDK fields (`osdp_flags`, `icvt_num`, 115 field list, capacities) are **derived** in Infrastructure.Aero; capacities default to §6.3 and sit in an Advanced section. |
@@ -322,6 +324,17 @@ MVC (user)                                  DB                                  
 | Enable Peer Certificate | unchecked (POC) | — |
 
 Accept → **Apply Settings, Reboot**.
+
+#### 5.2.1 Controller commissioning (manual, once per controller)
+
+Network and host-communication settings are **commissioned manually on the controller** by a technician, through the Configuration Manager. Our software **never changes them**.
+
+| | |
+|---|---|
+| **Why manual** | Our software can only reach a controller that is already on the network and knows the host. Every network change takes effect only after a reboot (web "Apply Settings, Reboot", or SDK 913), and a wrong IP / gateway / host IP makes the controller unreachable → **manual on-site recovery** (DIP switches / RESET). Remote changes are therefore not offered. |
+| **Factory access** | DIP 2 ON (others OFF) = factory communication defaults: **IP Server, static 192.168.0.251**, subnet 255.255.0.0, gateway/DNS 192.168.0.1, port 3001, TLS if available. DIP 1 ON = default login `admin` / `password` for 5 minutes. In factory-default modes the configuration is **not** saved to flash (X1100 install guide §6). |
+| **Checklist** | 1. Laptop on 192.168.0.x → `https://192.168.0.251` (DIP 1 for login). 2. Change the default password. 3. Network: static IP (or DHCP) from SANS IT, subnet, gateway, DNS. 4. Host Comm: **IP Client**, Host IP = Gateway server, port **3001**, TLS if available (§5.2 table). 5. Auto-Save ON. 6. Apply Settings, Reboot. 7. **All DIP switches OFF**. 8. Record the controller's serial number (label / ID report) for registration in the MVC. |
+| **In our software** | The controller is identified by **serial number** (ID report), not IP. IP Client: no IP is entered; the network settings may be **read and displayed** after connection with **900** (read type 2 = network, 3 = host comm). IP Server (lab only): the controller IP is entered by the user because the Gateway connects to it (1013). Commands **902 / 903 / 913 are not used**. |
 
 ### 5.3 Startup sequence — IP Client
 
@@ -579,7 +592,7 @@ Unknown types are persisted raw and logged, never dropped.
 
 **Development database:** local SQL Server default instance (`localhost`, MSSQLSERVER), Windows Authentication, database **`AccessControl_poc`**. Connection string key `ConnectionStrings:AccessControl`, supplied via user-secrets in Web and Gateway — never committed. (User decision, overrides the standards' "SQL Server in a container" default.)
 
-Minimum tables for the POC: `Sites`, `Controllers` (+ connection mode, serial, status, last ID report, `PublishedVersion` / `AppliedVersion` / sync status), `ControllerConfigVersions` (published by / at), `PendingControllers`, `SioPanels`, `InputPoints`, `OutputPoints`, `Doors`, `Readers`, `CardFormats`, `Schedules`, `Holidays`, `AccessLevels`, `Cardholders`, `Credentials`, `AccessEvents` (raw + decoded transaction, controller serial number, UTC time, received-at; unique `(ControllerId, TransactionSerial)`), `ControllerCommands` (outbox: intent, status Pending/Sent/Succeeded/Failed, driver tag, NAK reason, attempts). All follow the auditing/soft-delete/rowversion rules in code-style. `AccessEvents` are append-only and keyed by host IDs so replacing a reader does not lose history.
+Minimum tables for the POC: `Sites` ✅, `Scps` ✅ (connection mode, serial, IP/port, `Allocation_*` columns, `PublishedVersion` / `AppliedVersion` / sync status; last ID report added in step 4), `ScpConfigVersions` (published by / at), `PendingScps`, `SioPanels` ✅, `InputPoints`, `OutputPoints`, `Doors`, `Readers`, `CardFormats`, `Schedules`, `Holidays`, `AccessLevels`, `Cardholders`, `Credentials`, `AccessEvents` (raw + decoded transaction, controller serial number, UTC time, received-at; unique `(ControllerId, TransactionSerial)`), `ControllerCommands` (outbox: intent, status Pending/Sent/Succeeded/Failed, driver tag, NAK reason, attempts). All follow the auditing/soft-delete/rowversion rules in code-style. `AccessEvents` are append-only and keyed by host IDs so replacing a reader does not lose history.
 
 ---
 

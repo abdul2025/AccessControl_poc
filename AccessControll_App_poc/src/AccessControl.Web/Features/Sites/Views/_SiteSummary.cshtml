@@ -1,0 +1,12 @@
+@model SiteDetailsViewModel
+
+<dl class="detail-list">
+    <dt>Code</dt>
+    <dd>@Model.Code</dd>
+    <dt>Name</dt>
+    <dd>@Model.Name</dd>
+    <dt>Description</dt>
+    <dd>@AuditDisplay.Optional(Model.Description)</dd>
+    <dt>Controllers</dt>
+    <dd>@Model.Scps.Count</dd>
+</dl>

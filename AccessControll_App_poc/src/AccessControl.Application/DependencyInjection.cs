@@ -1,3 +1,7 @@
+using AccessControl.Application.Features.Scps;
+using AccessControl.Application.Features.Scps.Interfaces;
+using AccessControl.Application.Features.Sites;
+using AccessControl.Application.Features.Sites.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -9,8 +13,8 @@ public static class DependencyInjection
     {
         services.TryAddSingleton(TimeProvider.System);
 
-        // One line per feature:
-        // services.AddScoped<I{Entity}Service, {Entity}Service>();
+        services.AddScoped<ISiteService, SiteService>();
+        services.AddScoped<IScpService, ScpService>();
 
         return services;
     }

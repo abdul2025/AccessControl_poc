@@ -37,6 +37,15 @@ Gateway run / port 3001 / firewall checks: [`GATEWAY-COMMANDS.md`](GATEWAY-COMMA
 
 Switch HID SDK build: `dotnet build -p:AeroSdkVersion=4.8.1.3` (DLLs in `lib/HIDAero/4.8.1.3/`).
 
+## Features (Web)
+
+| Menu | Route | What it does |
+|---|---|---|
+| Sites | `/Sites` | Locations that group controllers. Code unique (upper-case); a site with controllers cannot be deleted. |
+| Controllers | `/Scps` | HID Aero X1100 controllers (`Scp` in code). IP Client: serial number required; IP Server: IP + port. SIO 0 (internal I/O) is created automatically. Saved as desired configuration only — nothing is sent to hardware until publishing (step 4). |
+
+Migrations applied: `AddSitesAndScps`.
+
 ## Migrations
 
 ```powershell

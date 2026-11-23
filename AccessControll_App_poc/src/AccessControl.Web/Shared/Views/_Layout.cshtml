@@ -1,4 +1,7 @@
-﻿<!DOCTYPE html>
+﻿@{
+    var currentController = ViewContext.RouteData.Values["controller"] as string;
+}
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -20,10 +23,14 @@
                 </button>
                 <div id="main-navigation" class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        @* One link per feature, added with the feature. *@
+                        @foreach (var (controller, label) in new[] { ("Home", "Home"), ("Sites", "Sites"), ("Scps", "Controllers") })
+                        {
+                            var isActive = string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase);
+                            <li class="nav-item">
+                                <a class="nav-link text-dark @(isActive ? "is-active" : "")" asp-controller="@controller" asp-action="Index"
+                                   aria-current="@(isActive ? "page" : null)">@label</a>
+                            </li>
+                        }
                     </ul>
                 </div>
             </div>
@@ -51,6 +58,7 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/modal-forms.js" asp-append-version="true"></script>
+    <script src="~/js/scp-form.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

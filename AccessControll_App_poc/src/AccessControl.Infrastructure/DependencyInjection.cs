@@ -1,4 +1,8 @@
 using AccessControl.Application.Common.Interfaces;
+using AccessControl.Application.Features.Scps.Ports;
+using AccessControl.Application.Features.Sites.Ports;
+using AccessControl.Infrastructure.Persistence.Features.Scps;
+using AccessControl.Infrastructure.Persistence.Features.Sites;
 using AccessControl.Infrastructure.Auditing;
 using AccessControl.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -31,8 +35,8 @@ public static class DependencyInjection
                 .UseSqlServer(connectionString)
                 .AddInterceptors(serviceProvider.GetRequiredService<AuditableEntityInterceptor>()));
 
-        // One line per feature:
-        // services.AddScoped<I{Entity}Repository, {Entity}Repository>();
+        services.AddScoped<ISiteRepository, SiteRepository>();
+        services.AddScoped<IScpRepository, ScpRepository>();
 
         return services;
     }

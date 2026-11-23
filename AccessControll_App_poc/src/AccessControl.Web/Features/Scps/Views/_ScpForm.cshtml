@@ -1,0 +1,97 @@
+@model ScpFormViewModel
+
+<div asp-validation-summary="ModelOnly" class="notice notice--danger" role="alert"></div>
+<input type="hidden" asp-for="RowVersion" />
+
+<div class="form-grid">
+    <div class="form-field">
+        <label asp-for="SiteId"></label>
+        <select asp-for="SiteId" asp-items="Model.SiteItems()">
+            <option value="">Select a site</option>
+        </select>
+        <span asp-validation-for="SiteId" class="field-error"></span>
+    </div>
+    <div class="form-field">
+        <label asp-for="Name"></label>
+        <input asp-for="Name" autocomplete="off" placeholder="e.g. Main gate" />
+        <span asp-validation-for="Name" class="field-error"></span>
+    </div>
+    <div class="form-field">
+        <label asp-for="ScpNumber"></label>
+        @if (Model.CanChangeScpNumber)
+        {
+            <input asp-for="ScpNumber" type="number" min="@ScpEntity.MinScpNumber" max="@ScpEntity.MaxScpNumber" aria-describedby="scp-number-hint" />
+        }
+        else
+        {
+            <input asp-for="ScpNumber" readonly aria-describedby="scp-number-hint" />
+        }
+        <span id="scp-number-hint" class="field-hint">Unique across all sites. Programmed into the controller when its configuration is published.</span>
+        <span asp-validation-for="ScpNumber" class="field-error"></span>
+    </div>
+    <div class="form-field">
+        <label asp-for="Model"></label>
+        @if (Model.IsEdit)
+        {
+            <input value="@ScpLabels.ToLabel(Model.Model!.Value)" readonly id="Model" />
+        }
+        else
+        {
+            <select asp-for="Model" asp-items="ScpLabels.ModelOptions()"></select>
+        }
+        <span asp-validation-for="Model" class="field-error"></span>
+    </div>
+    <div class="form-field form-field--full">
+        <label asp-for="ConnectionMode"></label>
+        <select asp-for="ConnectionMode" asp-items="ScpLabels.ConnectionModeOptions()" data-mode-select aria-describedby="connection-mode-hint"></select>
+        <span id="connection-mode-hint" class="field-hint">
+            IP Client: @ScpLabels.ToHint(ConnectionMode.IpClient)
+            IP Server: @ScpLabels.ToHint(ConnectionMode.IpServer)
+        </span>
+        <span asp-validation-for="ConnectionMode" class="field-error"></span>
+    </div>
+    <div class="form-field" data-mode-group="IpClient">
+        <label asp-for="SerialNumber"></label>
+        <input asp-for="SerialNumber" type="number" min="1" autocomplete="off" aria-describedby="serial-hint" />
+        <span id="serial-hint" class="field-hint">From the controller label or its ID report. Required for IP Client.</span>
+        <span asp-validation-for="SerialNumber" class="field-error"></span>
+    </div>
+    <div class="form-field" data-mode-group="IpServer">
+        <label asp-for="IpAddress"></label>
+        <input asp-for="IpAddress" autocomplete="off" aria-describedby="ip-hint" />
+        <span id="ip-hint" class="field-hint">IP Server only. Network settings themselves are set on the controller (commissioning).</span>
+        <span asp-validation-for="IpAddress" class="field-error"></span>
+    </div>
+    <div class="form-field" data-mode-group="IpServer">
+        <label asp-for="Port"></label>
+        <input asp-for="Port" type="number" min="1" max="65535" placeholder="@ScpEntity.DefaultPort" />
+        <span asp-validation-for="Port" class="field-error"></span>
+    </div>
+    <div class="form-field form-field--full">
+        <label asp-for="Description"></label>
+        <textarea asp-for="Description" rows="2"></textarea>
+        <span asp-validation-for="Description" class="field-error"></span>
+    </div>
+</div>
+
+<details class="advanced" @(Model.IsEdit ? "" : "open")>
+    <summary>Advanced — memory allocation</summary>
+    @if (Model.IsEdit && Model.Allocation is { } allocation)
+    {
+        <partial name="_ScpAllocation" model="allocation" />
+    }
+    else
+    {
+        <div class="form-grid">
+            <div class="form-field">
+                <label asp-for="UtcOffsetHours"></label>
+                <input asp-for="UtcOffsetHours" type="number" step="0.25" min="-12" max="14" aria-describedby="utc-hint" />
+                <span id="utc-hint" class="field-hint">Controller local time zone. Saudi Arabia: 3 (UTC+03:00, no daylight saving).</span>
+                <span asp-validation-for="UtcOffsetHours" class="field-error"></span>
+            </div>
+        </div>
+        <p class="field-hint">
+            Event buffer 60,000 · cards 100,000 · 32 access levels per card (spec defaults, fixed at creation).
+        </p>
+    }
+</details>

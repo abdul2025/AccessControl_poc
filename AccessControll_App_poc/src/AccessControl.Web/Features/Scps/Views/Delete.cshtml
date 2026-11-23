@@ -1,0 +1,7 @@
+﻿@model ScpDetailsViewModel
+@{ ViewData["Title"] = "Delete controller"; }
+
+@* Full-page fallback when JavaScript is unavailable; the same form opens in a modal otherwise. *@
+<section class="form-card form-card--page" aria-labelledby="scp-form-title">
+    <partial name="_DeleteForm" model="Model" />
+</section>

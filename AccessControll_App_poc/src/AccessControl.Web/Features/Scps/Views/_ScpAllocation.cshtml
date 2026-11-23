@@ -1,0 +1,16 @@
+@model ScpAllocationDto
+
+<dl class="detail-list">
+    <dt>Time zone</dt>
+    <dd>@ScpLabels.ToUtcOffsetLabel(Model.UtcOffsetHours) <span class="field-hint">(GMT offset @Model.GmtOffsetSeconds s)</span></dd>
+    <dt>Event buffer</dt>
+    <dd>@Model.Transactions.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) transactions</dd>
+    <dt>Card capacity</dt>
+    <dd>@Model.Cards.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) cards</dd>
+    <dt>Access levels per card</dt>
+    <dd>@Model.AccessLevelsPerCard</dd>
+</dl>
+<p class="field-hint">
+    Fixed when the controller is created. Changing these on a configured controller requires a reset that erases its
+    database and unsent events.
+</p>

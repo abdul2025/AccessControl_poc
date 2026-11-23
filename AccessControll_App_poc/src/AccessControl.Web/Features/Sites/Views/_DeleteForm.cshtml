@@ -1,0 +1,29 @@
+@model SiteDetailsViewModel
+
+<form asp-action="Delete" asp-route-id="@Model.Id" method="post" novalidate data-modal-form>
+    <div class="modal-header">
+        <div>
+            <p class="eyebrow">Sites</p>
+            <h2 class="modal-title" id="site-form-title">Delete site @Model.Code?</h2>
+        </div>
+        <partial name="_FormCloseButton" />
+    </div>
+    <div class="modal-body">
+        <input type="hidden" name="rowVersion" value="@Model.RowVersion" />
+        <partial name="_StatusMessages" />
+        @if (Model.HasScps)
+        {
+            <p class="notice notice--danger" role="alert">
+                This site still has @Model.Scps.Count controller(s). Move or delete them before deleting the site.
+            </p>
+        }
+        <partial name="_SiteSummary" model="Model" />
+    </div>
+    <div class="modal-footer">
+        <a class="button button--secondary" asp-action="Details" asp-route-id="@Model.Id" data-bs-dismiss="@(ViewData[AccessControl.Web.Controllers.ModalFormController.IsModalViewDataKey] is true ? "modal" : null)">Cancel</a>
+        @if (!Model.HasScps)
+        {
+            <button type="submit" class="button button--danger">Delete</button>
+        }
+    </div>
+</form>

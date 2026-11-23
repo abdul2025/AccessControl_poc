@@ -76,6 +76,70 @@ Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '127
 In the X1100 Configuration Manager → Host Comm: Connection Type **IP Client**, Host IP = this address, Port **3001**,
 Data Security **TLS if Available** → Accept → Apply Settings, Reboot.
 
+## 6. Bench test: connect the X1100 kit to this laptop
+
+The HID SDK has **no network scan for controllers**. In IP Client mode the controller **calls the Gateway**:
+every X1100 commissioned with Host IP = this laptop connects by itself and appears in the Gateway log
+(step 4: in the MVC as a *Pending controller*). Full commissioning rules: `docs/PROJECT_SPEC.md` §5.2.1.
+
+1. **Network** — connect the X1100 to the laptop directly (Ethernet cable) or via the same switch.
+   Give the laptop's Ethernet adapter a static IP on the controller's factory subnet:
+   IP **192.168.0.10**, mask **255.255.0.0** (Settings → Network → Ethernet → IP assignment → Manual).
+   Check it:
+
+   ```powershell
+   Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -like '192.168.0.*' } | Select-Object InterfaceAlias, IPAddress, PrefixLength
+   Test-Connection 192.168.0.251 -Count 2      # controller reachable (factory default IP)
+   ```
+
+2. **Commission the controller** (Configuration Manager in the browser):
+   - DIP switch **2 ON** (others OFF) → factory communication defaults; power-cycle or press RESET.
+   - Open `https://192.168.0.251` (accept the certificate warning). DIP switch **1 ON** enables the default login
+     `admin` / `password` for 5 minutes. Change the password.
+   - **Host Comm**: Connection Type **IP Client**, Host IP **192.168.0.10** (this laptop), Port **3001**,
+     Data Security **TLS if Available**, Enable Peer Certificate unchecked → Accept.
+   - **Network**: keep 192.168.0.251 (or another free address on 192.168.0.x).
+   - **Auto-Save ON**.
+   - **Apply Settings, Reboot**, then set **all DIP switches OFF** (otherwise configuration is not saved to flash).
+
+3. **Firewall** — allow inbound TCP 3001 (section 4).
+
+4. **Run the Gateway** in Development (auto-accept is on only there):
+
+   ```powershell
+   cd C:\Users\Abdul\projects\AccessControll_poc\AccessControll_App_poc
+   dotnet run --project src/AccessControl.Gateway
+   ```
+
+5. **Expected log** within a few seconds after the controller reboots:
+
+   ```
+   SCP 1 comm status: Communication OK (...), channel 44, ..., new session True.
+   SCP 1 ID report: serial 2001843, device 4 v27, firmware 2.5, MAC 00:18:9E:..., programmed SCP ID 1, ...
+   SCP 1 (serial 2001843): accepting connection — posting 1107, 1105, 1116, 302, 303.
+   SCP 1: 1107 ScpDeviceSpecification (tag ...) OK.
+   ... 1105, 1116, 302, 303 ... OK.
+   ```
+
+   Then check that port 3001 shows an **Established** connection from 192.168.0.251:
+
+   ```powershell
+   Get-NetTCPConnection -LocalPort 3001 | Select-Object LocalAddress, LocalPort, RemoteAddress, State
+   ```
+
+   **Record for the spec (open items 2, 12, 13):** firmware version, whether **1116** returned OK, and the
+   controller's serial number. Every additional controller commissioned to the same Host IP shows up the same way
+   with its own serial and SCP ID.
+
+**Troubleshooting**
+
+| Symptom | Check |
+|---|---|
+| `Test-Connection 192.168.0.251` fails | Laptop IP/mask, cable, DIP 2 ON at power-up |
+| Gateway listening but no `comm status` | Firewall rule (section 4); Host IP on the controller = laptop IP; controller rebooted after Apply |
+| Connects, then drops after ~15 s | 1107 not OK — check the `posted 1107` / `OK` lines and any NAK |
+| `PENDING (not accepted)` | Not running in Development — `AutoAcceptControllers` is false |
+
 ---
 
 ## From the MSYS2 / UCRT64 bash terminal

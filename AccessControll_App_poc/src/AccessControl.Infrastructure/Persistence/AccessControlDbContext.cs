@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using AccessControl.Domain.Common.Entities;
+using AccessControl.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace AccessControl.Infrastructure.Persistence;
@@ -9,8 +10,8 @@ public sealed class AccessControlDbContext(DbContextOptions<AccessControlDbConte
     public const string RowVersionPropertyName = "RowVersion";
     public const int UserIdMaxLength = 450;
 
-    // One DbSet per aggregate root:
-    // public DbSet<{Entity}> {Feature} => Set<{Entity}>();
+    public DbSet<Site> Sites => Set<Site>();
+    public DbSet<Scp> Scps => Set<Scp>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
