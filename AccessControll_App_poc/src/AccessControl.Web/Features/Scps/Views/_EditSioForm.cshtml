@@ -1,0 +1,30 @@
+@model EditSioFormViewModel
+@{
+    var isModal = ViewData[AccessControl.Web.Controllers.ModalFormController.IsModalViewDataKey] is true;
+}
+
+<form action="@Context.Request.Path@Context.Request.QueryString" method="post" asp-antiforgery="true" novalidate data-modal-form>
+    <div class="modal-header">
+        <div>
+            <p class="eyebrow">@Model.ScpDisplayName</p>
+            <h2 class="modal-title" id="hardware-form-title">Rename SIO</h2>
+        </div>
+        <partial name="_FormCloseButton" />
+    </div>
+    <div class="modal-body">
+        <div asp-validation-summary="ModelOnly" class="notice notice--danger" role="alert"></div>
+        <input type="hidden" asp-for="RowVersion" />
+        <p class="field-hint">@Model.HardwareSummary — fixed once added; remove and add the SIO again to change them.</p>
+        <div class="form-grid">
+            <div class="form-field form-field--full">
+                <label asp-for="Name"></label>
+                <input asp-for="Name" autocomplete="off" />
+                <span asp-validation-for="Name" class="field-error"></span>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <a class="button button--secondary" asp-action="Details" asp-route-id="@ViewContext.RouteData.Values["id"]" data-bs-dismiss="@(isModal ? "modal" : null)">Cancel</a>
+        <button type="submit" class="button button--primary">Save</button>
+    </div>
+</form>

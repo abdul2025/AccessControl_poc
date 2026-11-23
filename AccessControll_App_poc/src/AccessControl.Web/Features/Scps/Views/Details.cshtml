@@ -16,6 +16,7 @@
         </div>
     </div>
 
+    <partial name="_StatusMessages" />
     <partial name="_ScpSummary" model="Model" />
 
     <section aria-labelledby="scp-config-title">
@@ -34,40 +35,7 @@
         </p>
     </section>
 
-    <section aria-labelledby="scp-sios-title">
-        <h2 id="scp-sios-title">I/O panels (SIO)</h2>
-        <div class="table-card">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th scope="col">SIO</th>
-                        <th scope="col">Name</th>
-                        <th scope="col">Model</th>
-                        <th scope="col">Port</th>
-                        <th scope="col">Address</th>
-                        <th scope="col">Inputs</th>
-                        <th scope="col">Outputs</th>
-                        <th scope="col">Reader ports</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var panel in scp.SioPanels)
-                    {
-                        <tr>
-                            <th scope="row">@panel.Number</th>
-                            <td>@panel.Name</td>
-                            <td>@ScpLabels.ToLabel(panel.Model)</td>
-                            <td>@ScpLabels.ToLabel(panel.Port)</td>
-                            <td>@panel.Address</td>
-                            <td>@panel.Inputs</td>
-                            <td>@panel.Outputs</td>
-                            <td>@panel.ReaderPorts</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    </section>
+    <partial name="_SioPanels" model="Model" />
 
     <section aria-labelledby="scp-allocation-title">
         <h2 id="scp-allocation-title">Advanced — memory allocation</h2>

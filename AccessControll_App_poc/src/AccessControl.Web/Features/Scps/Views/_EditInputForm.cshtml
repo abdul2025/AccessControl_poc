@@ -1,0 +1,50 @@
+@model InputFormViewModel
+@{
+    var isModal = ViewData[AccessControl.Web.Controllers.ModalFormController.IsModalViewDataKey] is true;
+}
+
+<form action="@Context.Request.Path@Context.Request.QueryString" method="post" asp-antiforgery="true" novalidate data-modal-form>
+    <div class="modal-header">
+        <div>
+            <p class="eyebrow">@Model.ScpDisplayName · @Model.PointDisplayName</p>
+            <h2 class="modal-title" id="hardware-form-title">Edit input</h2>
+        </div>
+        <partial name="_FormCloseButton" />
+    </div>
+    <div class="modal-body">
+        <div asp-validation-summary="ModelOnly" class="notice notice--danger" role="alert"></div>
+        <input type="hidden" asp-for="RowVersion" />
+        @if (Model.Dedicated != DedicatedInput.None)
+        {
+            <p class="notice notice--info" role="status">
+                @ScpLabels.ToLabel(Model.Dedicated): this terminal is for the enclosure or power supply and cannot be used by a door.
+                Tick <strong>Monitored</strong> once the installer confirms the contact is wired — an unwired input would raise a permanent alarm.
+            </p>
+        }
+        <div class="form-grid">
+            <div class="form-field">
+                <label asp-for="Name"></label>
+                <input asp-for="Name" autocomplete="off" placeholder="e.g. Main gate door contact" />
+                <span asp-validation-for="Name" class="field-error"></span>
+            </div>
+            <div class="form-field">
+                <label asp-for="Contact"></label>
+                <select asp-for="Contact" asp-items="ScpLabels.ContactOptions()"></select>
+                <span class="field-hint">State of the contact when the input is at rest (door closed, button not pressed).</span>
+                <span asp-validation-for="Contact" class="field-error"></span>
+            </div>
+            <div class="form-field form-field--full">
+                <label class="checkbox-field"><input asp-for="Supervised" /> @Html.DisplayNameFor(model => model.Supervised)</label>
+                <span class="field-hint">Two 1k resistors at the sensor let the controller also detect cut or shorted wiring.</span>
+            </div>
+            <div class="form-field form-field--full">
+                <label class="checkbox-field"><input asp-for="Monitored" /> @Html.DisplayNameFor(model => model.Monitored)</label>
+                <span class="field-hint">Inputs used by a door (contact, exit button) are handled by the door itself.</span>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <a class="button button--secondary" asp-action="Details" asp-route-id="@ViewContext.RouteData.Values["id"]" data-bs-dismiss="@(isModal ? "modal" : null)">Cancel</a>
+        <button type="submit" class="button button--primary">Save</button>
+    </div>
+</form>

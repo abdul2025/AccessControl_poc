@@ -12,6 +12,13 @@ public static class ScpErrors
     public const string DuplicateName = "Scp.DuplicateName";
     public const string SiteNotFound = "Scp.SiteNotFound";
     public const string ConcurrencyConflict = "Scp.ConcurrencyConflict";
+    public const string SioNotFound = ScpEntity.SioNotFoundErrorCode;
+    public const string PointNotFound = ScpEntity.PointNotFoundErrorCode;
+    public const string DuplicateSioNumber = ScpEntity.DuplicateSioNumberErrorCode;
+    public const string DuplicateSioAddress = ScpEntity.DuplicateSioAddressErrorCode;
+    public const string DuplicateSioName = ScpEntity.DuplicateSioNameErrorCode;
+    public const string SioLimit = ScpEntity.SioLimitErrorCode;
+    public const string InternalSio = ScpEntity.InternalSioErrorCode;
 
     public const string NotFoundMessage = "The controller was not found.";
     public const string DuplicateNumberMessage = "Another controller already uses this SCP number.";

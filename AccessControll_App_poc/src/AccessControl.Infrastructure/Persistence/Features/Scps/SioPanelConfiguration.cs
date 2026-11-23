@@ -19,5 +19,11 @@ internal sealed class SioPanelConfiguration : IEntityTypeConfiguration<SioPanel>
 
         // SIO numbers are unique within their controller (command 109 sio_number).
         builder.HasIndex("ScpId", nameof(SioPanel.Number)).HasDatabaseName(ScpNumberIndexName).IsUnique();
+
+        // Points belong to their SIO: removing an SIO from the controller removes its points.
+        builder.HasMany(panel => panel.Inputs).WithOne().HasForeignKey("SioPanelId").IsRequired().OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(panel => panel.Inputs).UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.HasMany(panel => panel.Outputs).WithOne().HasForeignKey("SioPanelId").IsRequired().OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(panel => panel.Outputs).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

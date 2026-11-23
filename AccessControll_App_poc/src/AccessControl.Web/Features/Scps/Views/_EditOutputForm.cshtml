@@ -1,0 +1,35 @@
+@model OutputFormViewModel
+@{
+    var isModal = ViewData[AccessControl.Web.Controllers.ModalFormController.IsModalViewDataKey] is true;
+}
+
+<form action="@Context.Request.Path@Context.Request.QueryString" method="post" asp-antiforgery="true" novalidate data-modal-form>
+    <div class="modal-header">
+        <div>
+            <p class="eyebrow">@Model.ScpDisplayName · @Model.PointDisplayName</p>
+            <h2 class="modal-title" id="hardware-form-title">Edit relay</h2>
+        </div>
+        <partial name="_FormCloseButton" />
+    </div>
+    <div class="modal-body">
+        <div asp-validation-summary="ModelOnly" class="notice notice--danger" role="alert"></div>
+        <input type="hidden" asp-for="RowVersion" />
+        <div class="form-grid">
+            <div class="form-field">
+                <label asp-for="Name"></label>
+                <input asp-for="Name" autocomplete="off" placeholder="e.g. Main gate lock" />
+                <span asp-validation-for="Name" class="field-error"></span>
+            </div>
+            <div class="form-field">
+                <label asp-for="PulseSeconds"></label>
+                <input asp-for="PulseSeconds" type="number" min="1" max="@OutputPoint.MaxPulseSeconds" />
+                <span class="field-hint">How long a momentary activation keeps the relay on (auxiliary use). Door locks use the door's own lock times.</span>
+                <span asp-validation-for="PulseSeconds" class="field-error"></span>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <a class="button button--secondary" asp-action="Details" asp-route-id="@ViewContext.RouteData.Values["id"]" data-bs-dismiss="@(isModal ? "modal" : null)">Cancel</a>
+        <button type="submit" class="button button--primary">Save</button>
+    </div>
+</form>

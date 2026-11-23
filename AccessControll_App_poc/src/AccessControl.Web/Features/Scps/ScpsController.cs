@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace AccessControl.Web.Features.Scps;
 
 /// <summary>Controllers (HID SCPs): the desired configuration only — nothing is sent to hardware from here.</summary>
-public sealed class ScpsController(IScpService scpService) : ModalFormController
+public sealed partial class ScpsController(IScpService scpService) : ModalFormController
 {
     [HttpGet]
     public async Task<IActionResult> Index(
@@ -234,7 +234,9 @@ public sealed class ScpsController(IScpService scpService) : ModalFormController
     private static int StatusFor(string errorCode) => errorCode switch
     {
         ScpErrors.ConcurrencyConflict or ScpErrors.DuplicateNumber or ScpErrors.DuplicateSerial
-            or ScpErrors.DuplicateName or ScpErrors.NumberLocked => StatusCodes.Status409Conflict,
+            or ScpErrors.DuplicateName or ScpErrors.NumberLocked
+            or ScpErrors.DuplicateSioNumber or ScpErrors.DuplicateSioAddress or ScpErrors.DuplicateSioName
+            or ScpErrors.SioLimit or ScpErrors.InternalSio => StatusCodes.Status409Conflict,
         _ => StatusCodes.Status422UnprocessableEntity,
     };
 
@@ -247,6 +249,9 @@ public sealed class ScpsController(IScpService scpService) : ModalFormController
             ScpErrors.DuplicateSerial => nameof(ScpFormViewModel.SerialNumber),
             ScpErrors.DuplicateName => nameof(ScpFormViewModel.Name),
             ScpErrors.SiteNotFound => nameof(ScpFormViewModel.SiteId),
+            ScpErrors.DuplicateSioNumber => nameof(AddSioFormViewModel.Number),
+            ScpErrors.DuplicateSioAddress => nameof(AddSioFormViewModel.Address),
+            ScpErrors.DuplicateSioName => nameof(AddSioFormViewModel.Name),
             _ => string.Empty,
         };
 

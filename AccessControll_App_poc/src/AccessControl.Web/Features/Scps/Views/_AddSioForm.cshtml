@@ -1,0 +1,52 @@
+@model AddSioFormViewModel
+@{
+    var isModal = ViewData[AccessControl.Web.Controllers.ModalFormController.IsModalViewDataKey] is true;
+}
+
+<form action="@Context.Request.Path@Context.Request.QueryString" method="post" asp-antiforgery="true" novalidate data-modal-form>
+    <div class="modal-header">
+        <div>
+            <p class="eyebrow">@Model.ScpDisplayName</p>
+            <h2 class="modal-title" id="hardware-form-title">Add SIO</h2>
+        </div>
+        <partial name="_FormCloseButton" />
+    </div>
+    <div class="modal-body">
+        <div asp-validation-summary="ModelOnly" class="notice notice--danger" role="alert"></div>
+        <input type="hidden" asp-for="RowVersion" />
+        <div class="form-grid">
+            <div class="form-field form-field--full">
+                <label asp-for="Model"></label>
+                <select asp-for="Model" asp-items="ScpLabels.ExternalSioModelOptions()"></select>
+                <span asp-validation-for="Model" class="field-error"></span>
+            </div>
+            <div class="form-field">
+                <label asp-for="Port"></label>
+                <select asp-for="Port" asp-items="ScpLabels.Rs485PortOptions()"></select>
+                <span asp-validation-for="Port" class="field-error"></span>
+            </div>
+            <div class="form-field">
+                <label asp-for="Address"></label>
+                <input asp-for="Address" type="number" min="0" max="@SioPanel.MaxRs485Address" aria-describedby="sio-address-hint" />
+                <span id="sio-address-hint" class="field-hint">Set on the board's address switches (0-15, unique on the port).</span>
+                <span asp-validation-for="Address" class="field-error"></span>
+            </div>
+            <div class="form-field">
+                <label asp-for="Number"></label>
+                <input asp-for="Number" type="number" min="1" max="31" aria-describedby="sio-number-hint" />
+                <span id="sio-number-hint" class="field-hint">Unique on this controller (SIO 0 is the built-in one).</span>
+                <span asp-validation-for="Number" class="field-error"></span>
+            </div>
+            <div class="form-field">
+                <label asp-for="Name"></label>
+                <input asp-for="Name" autocomplete="off" placeholder="e.g. Gate I/O" />
+                <span asp-validation-for="Name" class="field-error"></span>
+            </div>
+        </div>
+        <p class="field-hint">All of the board's inputs and relays are created automatically; name and configure them afterwards.</p>
+    </div>
+    <div class="modal-footer">
+        <a class="button button--secondary" asp-action="Details" asp-route-id="@ViewContext.RouteData.Values["id"]" data-bs-dismiss="@(isModal ? "modal" : null)">Cancel</a>
+        <button type="submit" class="button button--primary">Add SIO</button>
+    </div>
+</form>

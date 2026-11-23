@@ -18,7 +18,7 @@ html {
 }
 
 body {
-  margin-bottom: 60px;
+  margin-bottom: 0;
 }
 
 .form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
@@ -173,5 +173,31 @@ body {
 .status-badge--info    { color: #055160; background: #cff4fc; }
 .status-badge--active  { color: #052c65; background: #cfe2ff; }
 .status-badge--neutral { color: #495057; background: #e9ecef; }
+
+/*
+  Modal forms: our forms wrap header / body / footer in a <form>, which breaks Bootstrap's scrollable modal
+  (.modal-content hides overflow and only .modal-body scrolls when it is a direct flex child). Make the form the
+  flex column instead, so long forms (e.g. New controller) scroll inside the modal body.
+*/
+.modal-content > form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.modal-content > form > .modal-body {
+  overflow-y: auto;
+}
+
+/* Controller hardware layout */
+.sio-card { margin-top: 1rem; padding: 1rem; border: 1px solid #dee2e6; border-radius: 0.5rem; background: #fcfcfd; }
+.sio-card__header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
+.sio-card__header h3 { margin: 0; font-size: 1.1rem; }
+.sio-card__points { display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1rem; margin-top: 0.75rem; }
+.data-table caption { caption-side: top; padding: 0.5rem 0.75rem; font-weight: 600; color: #212529; }
+.data-table--compact th, .data-table--compact td { padding: 0.3rem 0.6rem; font-size: 0.9rem; }
+.checkbox-field { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; }
 
 .nav-link.is-active { font-weight: 600; text-decoration: underline; text-underline-offset: 0.3em; }

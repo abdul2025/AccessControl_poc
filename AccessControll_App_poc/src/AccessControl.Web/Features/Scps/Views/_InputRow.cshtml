@@ -1,0 +1,21 @@
+@model (Guid ScpId, InputPointDto Input)
+@{
+    var input = Model.Input;
+}
+
+<tr>
+    <th scope="row">@input.Number</th>
+    <td>
+        @input.Name
+        @if (input.Dedicated != DedicatedInput.None)
+        {
+            <span class="status-badge status-badge--neutral" title="@ScpLabels.ToLabel(input.Dedicated)">fixed</span>
+        }
+    </td>
+    <td>@ScpLabels.ToShortLabel(input.Contact)</td>
+    <td>@(input.Supervised ? "Yes" : "No")</td>
+    <td>@(input.Monitored ? "Yes" : "No")</td>
+    <td class="actions-cell">
+        <a asp-action="EditInput" asp-route-id="@Model.ScpId" asp-route-inputId="@input.Id" data-modal aria-label="Edit input @input.Name" title="Edit">Edit</a>
+    </td>
+</tr>

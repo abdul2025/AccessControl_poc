@@ -455,6 +455,12 @@ Sending 109 first with `enable` off and again after 115 with `enable` on avoids 
 
 Final input/output assignment follows the actual door wiring at the SANS test bench — record it in §4 when known.
 
+**Points in the application (step 3a):** every SIO is stored with all of its physical inputs and relays (hardware
+catalog). Defaults: general inputs normally open, Tamper / AC fail / Battery fail normally closed, none supervised,
+**none monitored** — an unwired normally-closed input reads "open" and would raise a permanent alarm, so monitoring
+(→ command 113) is switched on per input once the installer confirms the wiring
+(`docs/plans/tamper-ac-battery-inputs.md`). Relays default to a 1 s pulse (→ command 114 for auxiliary use).
+
 ---
 
 ## 7. VL70LF reader and door

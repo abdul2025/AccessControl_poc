@@ -21,6 +21,7 @@ public sealed record ScpDto(
     int? AppliedVersion,
     bool CanChangeScpNumber,
     IReadOnlyList<SioPanelDto> SioPanels,
+    short? NextFreeSioNumber,
     DateTimeOffset CreatedAtUtc,
     string? CreatedBy,
     DateTimeOffset? UpdatedAtUtc,
@@ -33,7 +34,7 @@ public sealed record ScpAllocationDto(int Transactions, int Cards, short AccessL
     public double UtcOffsetHours => -GmtOffsetSeconds / 3600d;
 }
 
-/// <summary>An SIO on the controller with its hardware capacity from the model catalog.</summary>
+/// <summary>An SIO on the controller with its points and its reader capacity from the model catalog.</summary>
 public sealed record SioPanelDto(
     Guid Id,
     short Number,
@@ -41,6 +42,20 @@ public sealed record SioPanelDto(
     SioPort Port,
     short Address,
     string Name,
-    int Inputs,
-    int Outputs,
-    int ReaderPorts);
+    int ReaderPorts,
+    IReadOnlyList<InputPointDto> Inputs,
+    IReadOnlyList<OutputPointDto> Outputs)
+{
+    public bool IsInternal => Port == SioPort.Internal;
+}
+
+public sealed record InputPointDto(
+    Guid Id,
+    short Number,
+    string Name,
+    InputContact Contact,
+    bool Supervised,
+    bool Monitored,
+    DedicatedInput Dedicated);
+
+public sealed record OutputPointDto(Guid Id, short Number, string Name, short PulseSeconds);

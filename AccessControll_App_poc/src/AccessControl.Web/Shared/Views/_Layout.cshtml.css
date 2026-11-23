@@ -39,10 +39,10 @@ button.accept-policy {
   line-height: inherit;
 }
 
+/* In normal flow (not absolutely positioned) so it never covers long pages such as a controller's SIO cards. */
 .footer {
-  position: absolute;
-  bottom: 0;
   width: 100%;
+  margin-top: 2rem;
   white-space: nowrap;
   line-height: 60px;
 }

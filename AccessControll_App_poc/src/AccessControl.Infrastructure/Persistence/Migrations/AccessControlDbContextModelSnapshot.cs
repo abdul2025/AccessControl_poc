@@ -23,6 +23,73 @@ namespace AccessControl.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("AccessControl.Domain.Entities.InputPoint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Contact")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Dedicated")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Monitored")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<short>("Number")
+                        .HasColumnType("smallint");
+
+                    b.Property<Guid>("SioPanelId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Supervised")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SioPanelId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("IX_InputPoints_SioPanelId_Number");
+
+                    b.ToTable("InputPoints", (string)null);
+                });
+
+            modelBuilder.Entity("AccessControl.Domain.Entities.OutputPoint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<short>("Number")
+                        .HasColumnType("smallint");
+
+                    b.Property<short>("PulseSeconds")
+                        .HasColumnType("smallint");
+
+                    b.Property<Guid>("SioPanelId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SioPanelId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("IX_OutputPoints_SioPanelId_Number");
+
+                    b.ToTable("OutputPoints", (string)null);
+                });
+
             modelBuilder.Entity("AccessControl.Domain.Entities.Scp", b =>
                 {
                     b.Property<Guid>("Id")
@@ -242,6 +309,24 @@ namespace AccessControl.Infrastructure.Persistence.Migrations
                     b.ToTable("Sites", (string)null);
                 });
 
+            modelBuilder.Entity("AccessControl.Domain.Entities.InputPoint", b =>
+                {
+                    b.HasOne("AccessControl.Domain.Entities.SioPanel", null)
+                        .WithMany("Inputs")
+                        .HasForeignKey("SioPanelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AccessControl.Domain.Entities.OutputPoint", b =>
+                {
+                    b.HasOne("AccessControl.Domain.Entities.SioPanel", null)
+                        .WithMany("Outputs")
+                        .HasForeignKey("SioPanelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("AccessControl.Domain.Entities.Scp", b =>
                 {
                     b.HasOne("AccessControl.Domain.Entities.Site", null)
@@ -263,6 +348,13 @@ namespace AccessControl.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("AccessControl.Domain.Entities.Scp", b =>
                 {
                     b.Navigation("SioPanels");
+                });
+
+            modelBuilder.Entity("AccessControl.Domain.Entities.SioPanel", b =>
+                {
+                    b.Navigation("Inputs");
+
+                    b.Navigation("Outputs");
                 });
 #pragma warning restore 612, 618
         }

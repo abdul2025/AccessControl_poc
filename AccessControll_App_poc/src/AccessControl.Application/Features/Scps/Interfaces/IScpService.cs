@@ -20,4 +20,16 @@ public interface IScpService
     Task<Result> UpdateAsync(Guid id, UpdateScpDto dto, CancellationToken cancellationToken);
 
     Task<Result> DeleteAsync(Guid id, byte[] rowVersion, CancellationToken cancellationToken);
+
+    // Hardware layout (SIO panels and their points) — changed only through the controller aggregate.
+
+    Task<Result> AddSioAsync(Guid scpId, AddSioDto dto, CancellationToken cancellationToken);
+
+    Task<Result> UpdateSioAsync(Guid scpId, Guid sioId, UpdateSioDto dto, CancellationToken cancellationToken);
+
+    Task<Result> RemoveSioAsync(Guid scpId, Guid sioId, byte[] rowVersion, CancellationToken cancellationToken);
+
+    Task<Result> UpdateInputAsync(Guid scpId, Guid inputId, UpdateInputDto dto, CancellationToken cancellationToken);
+
+    Task<Result> UpdateOutputAsync(Guid scpId, Guid outputId, UpdateOutputDto dto, CancellationToken cancellationToken);
 }

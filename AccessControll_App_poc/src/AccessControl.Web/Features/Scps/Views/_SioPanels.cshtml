@@ -1,0 +1,115 @@
+@model ScpDetailsViewModel
+@{
+    var scp = Model.Scp;
+}
+
+<section id="sio-panels" aria-labelledby="scp-sios-title">
+    <div class="section-heading">
+        <div>
+            <h2 id="scp-sios-title">I/O panels (SIO)</h2>
+            <p class="field-hint">Inputs and relays of the built-in board and of external X100 / X200 / X300 boards on RS-485.</p>
+        </div>
+        @if (scp.NextFreeSioNumber is not null)
+        {
+            <a class="button button--primary" asp-action="AddSio" asp-route-id="@scp.Id" data-modal>Add SIO</a>
+        }
+    </div>
+
+    @foreach (var panel in scp.SioPanels)
+    {
+        <article class="sio-card" aria-labelledby="sio-@panel.Number-title">
+            <header class="sio-card__header">
+                <div>
+                    <h3 id="sio-@panel.Number-title">SIO @panel.Number — @panel.Name</h3>
+                    <p class="field-hint">
+                        @ScpLabels.ToLabel(panel.Model) · @ScpLabels.ToLabel(panel.Port)@(panel.IsInternal ? "" : $" · address {panel.Address}")
+                        · @ScpLabels.SioCapacity(panel.Model)
+                    </p>
+                </div>
+                <div class="actions-cell">
+                    <a asp-action="EditSio" asp-route-id="@scp.Id" asp-route-sioId="@panel.Id" data-modal aria-label="Rename SIO @panel.Number" title="Rename">Rename</a>
+                    @if (!panel.IsInternal)
+                    {
+                        <a asp-action="RemoveSio" asp-route-id="@scp.Id" asp-route-sioId="@panel.Id" data-modal aria-label="Remove SIO @panel.Number" title="Remove">Remove</a>
+                    }
+                </div>
+            </header>
+
+            <div class="sio-card__points">
+                <div class="table-card">
+                    <table class="data-table data-table--compact">
+                        <caption>Inputs</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">#</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">Contact</th>
+                                <th scope="col">Supervised</th>
+                                <th scope="col">Monitored</th>
+                                <th scope="col"><span class="visually-hidden">Actions</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var input in panel.Inputs.Where(point => point.Dedicated == DedicatedInput.None))
+                            {
+                                <partial name="_InputRow" model="(scp.Id, input)" />
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="table-card">
+                    <table class="data-table data-table--compact">
+                        <caption>
+                            Enclosure &amp; power supply
+                            <span class="field-hint">— tick Monitored once the contact is wired</span>
+                        </caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">#</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">Contact</th>
+                                <th scope="col">Supervised</th>
+                                <th scope="col">Monitored</th>
+                                <th scope="col"><span class="visually-hidden">Actions</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var input in panel.Inputs.Where(point => point.Dedicated != DedicatedInput.None))
+                            {
+                                <partial name="_InputRow" model="(scp.Id, input)" />
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="table-card">
+                    <table class="data-table data-table--compact">
+                        <caption>Relays</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">#</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">Pulse (s)</th>
+                                <th scope="col"><span class="visually-hidden">Actions</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var output in panel.Outputs)
+                            {
+                                <tr>
+                                    <th scope="row">@output.Number</th>
+                                    <td>@output.Name</td>
+                                    <td>@output.PulseSeconds</td>
+                                    <td class="actions-cell">
+                                        <a asp-action="EditOutput" asp-route-id="@scp.Id" asp-route-outputId="@output.Id" data-modal aria-label="Edit relay @output.Name" title="Edit">Edit</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </article>
+    }
+</section>

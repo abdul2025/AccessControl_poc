@@ -1,0 +1,24 @@
+@model RemoveSioViewModel
+@{
+    var isModal = ViewData[AccessControl.Web.Controllers.ModalFormController.IsModalViewDataKey] is true;
+}
+
+<form action="@Context.Request.Path@Context.Request.QueryString" method="post" asp-antiforgery="true" novalidate data-modal-form>
+    <div class="modal-header">
+        <div>
+            <p class="eyebrow">@Model.ScpDisplayName</p>
+            <h2 class="modal-title" id="hardware-form-title">Remove @Model.SioDisplayName?</h2>
+        </div>
+        <partial name="_FormCloseButton" />
+    </div>
+    <div class="modal-body">
+        <input type="hidden" name="rowVersion" value="@Model.RowVersion" />
+        <partial name="_StatusMessages" />
+        <p>@Model.HardwareSummary</p>
+        <p>The SIO and all of its inputs and outputs are removed from this controller's configuration.</p>
+    </div>
+    <div class="modal-footer">
+        <a class="button button--secondary" asp-action="Details" asp-route-id="@Model.ScpId" data-bs-dismiss="@(isModal ? "modal" : null)">Cancel</a>
+        <button type="submit" class="button button--danger">Remove SIO</button>
+    </div>
+</form>

@@ -108,6 +108,50 @@ public sealed class ScpService(IScpRepository repository) : IScpService
         return await repository.DeleteAsync(scp, rowVersion, cancellationToken);
     }
 
+    public Task<Result> AddSioAsync(Guid scpId, AddSioDto dto, CancellationToken cancellationToken) =>
+        ChangeHardwareAsync(scpId, dto.RowVersion, scp => scp.AddSio(dto.Number, dto.Model, dto.Port, dto.Address, dto.Name), cancellationToken);
+
+    public Task<Result> UpdateSioAsync(Guid scpId, Guid sioId, UpdateSioDto dto, CancellationToken cancellationToken) =>
+        ChangeHardwareAsync(scpId, dto.RowVersion, scp => scp.RenameSio(sioId, dto.Name), cancellationToken);
+
+    public Task<Result> RemoveSioAsync(Guid scpId, Guid sioId, byte[] rowVersion, CancellationToken cancellationToken) =>
+        ChangeHardwareAsync(scpId, rowVersion, scp => scp.RemoveSio(sioId), cancellationToken);
+
+    public Task<Result> UpdateInputAsync(Guid scpId, Guid inputId, UpdateInputDto dto, CancellationToken cancellationToken) =>
+        ChangeHardwareAsync(
+            scpId,
+            dto.RowVersion,
+            scp => scp.UpdateInput(inputId, dto.Name, dto.Contact, dto.Supervised, dto.Monitored),
+            cancellationToken);
+
+    public Task<Result> UpdateOutputAsync(Guid scpId, Guid outputId, UpdateOutputDto dto, CancellationToken cancellationToken) =>
+        ChangeHardwareAsync(scpId, dto.RowVersion, scp => scp.UpdateOutput(outputId, dto.Name, dto.PulseSeconds), cancellationToken);
+
+    /// <summary>
+    /// Load the whole controller aggregate, let the domain apply the change, then save against the row version the
+    /// caller read — every hardware-layout change is concurrency-checked on the controller.
+    /// </summary>
+    private async Task<Result> ChangeHardwareAsync(
+        Guid scpId,
+        byte[] rowVersion,
+        Func<ScpEntity, Result> change,
+        CancellationToken cancellationToken)
+    {
+        var scp = await repository.GetForUpdateAsync(scpId, cancellationToken);
+        if (scp is null)
+        {
+            return Result.Failure(ScpErrors.NotFound, ScpErrors.NotFoundMessage);
+        }
+
+        var changed = change(scp);
+        if (changed.IsFailure)
+        {
+            return changed;
+        }
+
+        return await repository.UpdateAsync(scp, rowVersion, cancellationToken);
+    }
+
     /// <summary>
     /// Rules that need the database. Friendly early checks; the filtered unique indexes are the real guarantee.
     /// </summary>

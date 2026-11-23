@@ -61,6 +61,48 @@ public static class ScpLabels
         _ => port.ToString(),
     };
 
+    public static string ToLabel(InputContact contact) => contact switch
+    {
+        InputContact.NormallyClosed => "Normally closed",
+        InputContact.NormallyOpen => "Normally open",
+        _ => contact.ToString(),
+    };
+
+    public static string ToShortLabel(InputContact contact) => contact switch
+    {
+        InputContact.NormallyClosed => "NC",
+        InputContact.NormallyOpen => "NO",
+        _ => contact.ToString(),
+    };
+
+    public static string ToLabel(DedicatedInput dedicated) => dedicated switch
+    {
+        DedicatedInput.None => "General input",
+        DedicatedInput.Tamper => "Enclosure tamper",
+        DedicatedInput.AcFail => "Power supply AC fail",
+        DedicatedInput.BatteryFail => "Power supply battery fail",
+        _ => dedicated.ToString(),
+    };
+
+    public static IEnumerable<SelectListItem> ContactOptions() =>
+        Enum.GetValues<InputContact>().Select(contact => new SelectListItem(ToLabel(contact), contact.ToString()));
+
+    /// <summary>Models that can be added as external SIOs (the internal one comes with the controller).</summary>
+    public static IEnumerable<SelectListItem> ExternalSioModelOptions() =>
+        new[] { SioModel.X100, SioModel.X200, SioModel.X300 }
+            .Select(model => new SelectListItem($"{ToLabel(model)} — {SioCapacity(model)}", model.ToString()));
+
+    public static IEnumerable<SelectListItem> Rs485PortOptions() =>
+        new[] { SioPort.Rs485Port1, SioPort.Rs485Port2 }.Select(port => new SelectListItem(ToLabel(port), port.ToString()));
+
+    /// <summary>"7 inputs · 4 relays · 2 reader ports" from the hardware catalog.</summary>
+    public static string SioCapacity(SioModel model)
+    {
+        var spec = AccessControl.Domain.Catalog.HardwareCatalog.For(model);
+        var readers = spec.ReaderPorts > 0 ? $" · {spec.ReaderPorts} reader ports" : string.Empty;
+        return $"{spec.Inputs} inputs · {spec.Outputs} relays{readers}";
+    }
+
     public static IEnumerable<SelectListItem> ConnectionModeOptions() =>
         Enum.GetValues<ConnectionMode>().Select(mode => new SelectListItem(ToLabel(mode), mode.ToString()));
 

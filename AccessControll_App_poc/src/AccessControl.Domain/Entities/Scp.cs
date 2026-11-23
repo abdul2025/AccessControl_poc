@@ -14,6 +14,13 @@ public sealed class Scp : AuditableEntity, IHasDisplayName
 {
     public const string ValidationErrorCode = "Scp.Validation";
     public const string NumberLockedErrorCode = "Scp.NumberLocked";
+    public const string SioNotFoundErrorCode = "Scp.SioNotFound";
+    public const string PointNotFoundErrorCode = "Scp.PointNotFound";
+    public const string DuplicateSioNumberErrorCode = "Scp.DuplicateSioNumber";
+    public const string DuplicateSioAddressErrorCode = "Scp.DuplicateSioAddress";
+    public const string DuplicateSioNameErrorCode = "Scp.DuplicateSioName";
+    public const string SioLimitErrorCode = "Scp.SioLimit";
+    public const string InternalSioErrorCode = "Scp.InternalSio";
     public const int NameMaxLength = 150;
     public const int DescriptionMaxLength = 2000;
     public const int HostMaxLength = 253;
@@ -115,6 +122,135 @@ public sealed class Scp : AuditableEntity, IHasDisplayName
     }
 
     public static string NormalizeName(string? name) => (name ?? string.Empty).Trim();
+
+    /// <summary>The lowest free external SIO number (1-31), or <c>null</c> when the controller is full.</summary>
+    public short? NextFreeSioNumber() => NextFreeSioNumber(_sioPanels.Select(panel => panel.Number));
+
+    /// <summary>Shared with read models so the suggestion and the rule cannot differ.</summary>
+    public static short? NextFreeSioNumber(IEnumerable<short> usedNumbers)
+    {
+        var used = usedNumbers.ToHashSet();
+        for (short number = 1; number < HardwareCatalog.MaxSiosPerScp; number++)
+        {
+            if (!used.Contains(number))
+            {
+                return number;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Adds an external X100 / X200 / X300 on an RS-485 port, with all its points (commands 108 / 109). At most 16 SIOs
+    /// per port and 32 per controller; the address is unique on its port.
+    /// </summary>
+    public Result AddSio(short number, SioModel model, SioPort port, short address, string name)
+    {
+        if (!HardwareCatalog.IsKnown(model) || model == HardwareCatalog.For(Model).InternalSio)
+        {
+            return Result.Failure(ValidationErrorCode, "Choose an external SIO model (X100, X200 or X300).");
+        }
+
+        if (port is not (SioPort.Rs485Port1 or SioPort.Rs485Port2))
+        {
+            return Result.Failure(ValidationErrorCode, "External SIOs connect to RS-485 port 1 or 2.");
+        }
+
+        if (address is < 0 or > SioPanel.MaxRs485Address)
+        {
+            return Result.Failure(ValidationErrorCode, $"RS-485 address must be between 0 and {SioPanel.MaxRs485Address}.");
+        }
+
+        if (number is < 1 or >= HardwareCatalog.MaxSiosPerScp)
+        {
+            return Result.Failure(ValidationErrorCode, $"SIO number must be between 1 and {HardwareCatalog.MaxSiosPerScp - 1}.");
+        }
+
+        if (_sioPanels.Count >= HardwareCatalog.MaxSiosPerScp
+            || _sioPanels.Count(panel => panel.Port == port) >= HardwareCatalog.For(Model).MaxSiosPerRs485Port)
+        {
+            return Result.Failure(SioLimitErrorCode, "This port or controller already has the maximum number of SIOs.");
+        }
+
+        if (_sioPanels.Any(panel => panel.Number == number))
+        {
+            return Result.Failure(DuplicateSioNumberErrorCode, "Another SIO on this controller already uses this number.");
+        }
+
+        if (_sioPanels.Any(panel => panel.Port == port && panel.Address == address))
+        {
+            return Result.Failure(DuplicateSioAddressErrorCode, "Another SIO on this port already uses this address.");
+        }
+
+        var nameCheck = CheckSioName(name, excludeSioId: null);
+        if (nameCheck.IsFailure)
+        {
+            return nameCheck;
+        }
+
+        _sioPanels.Add(SioPanel.CreateExternal(number, model, port, address, SioPanel.NormalizeName(name)));
+        return Result.Success();
+    }
+
+    public Result RenameSio(Guid sioId, string name)
+    {
+        if (FindSio(sioId) is not { } panel)
+        {
+            return Result.Failure(SioNotFoundErrorCode, "The SIO was not found on this controller.");
+        }
+
+        var nameCheck = CheckSioName(name, excludeSioId: sioId);
+        return nameCheck.IsFailure ? nameCheck : panel.Rename(name);
+    }
+
+    /// <summary>Removes an external SIO and its points. The built-in SIO is part of the controller and stays.</summary>
+    public Result RemoveSio(Guid sioId)
+    {
+        if (FindSio(sioId) is not { } panel)
+        {
+            return Result.Failure(SioNotFoundErrorCode, "The SIO was not found on this controller.");
+        }
+
+        if (panel.IsInternal)
+        {
+            return Result.Failure(InternalSioErrorCode, "The controller's built-in SIO cannot be removed.");
+        }
+
+        _sioPanels.Remove(panel);
+        return Result.Success();
+    }
+
+    public Result UpdateInput(Guid inputId, string name, InputContact contact, bool supervised, bool monitored)
+    {
+        var input = _sioPanels.SelectMany(panel => panel.Inputs).FirstOrDefault(point => point.Id == inputId);
+        return input is null
+            ? Result.Failure(PointNotFoundErrorCode, "The input was not found on this controller.")
+            : input.Update(name, contact, supervised, monitored);
+    }
+
+    public Result UpdateOutput(Guid outputId, string name, short pulseSeconds)
+    {
+        var output = _sioPanels.SelectMany(panel => panel.Outputs).FirstOrDefault(point => point.Id == outputId);
+        return output is null
+            ? Result.Failure(PointNotFoundErrorCode, "The output was not found on this controller.")
+            : output.Update(name, pulseSeconds);
+    }
+
+    private SioPanel? FindSio(Guid sioId) => _sioPanels.FirstOrDefault(panel => panel.Id == sioId);
+
+    private Result CheckSioName(string name, Guid? excludeSioId)
+    {
+        var trimmed = SioPanel.NormalizeName(name);
+        if (trimmed.Length is 0 or > SioPanel.NameMaxLength)
+        {
+            return Result.Failure(ValidationErrorCode, $"SIO name is required and must be at most {SioPanel.NameMaxLength} characters.");
+        }
+
+        return _sioPanels.Any(panel => panel.Id != excludeSioId && string.Equals(panel.Name, trimmed, StringComparison.OrdinalIgnoreCase))
+            ? Result.Failure(DuplicateSioNameErrorCode, "Another SIO on this controller already uses this name.")
+            : Result.Success();
+    }
 
     private Result Apply(
         Guid siteId,

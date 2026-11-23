@@ -68,10 +68,28 @@ internal sealed class ScpRepository(AccessControlDbContext dbContext) : IScpRepo
                 SiteName = site.Name,
                 Panels = scp.SioPanels
                     .OrderBy(panel => panel.Number)
-                    .Select(panel => new { panel.Id, panel.Number, panel.Model, panel.Port, panel.Address, panel.Name })
+                    .Select(panel => new
+                    {
+                        panel.Id,
+                        panel.Number,
+                        panel.Model,
+                        panel.Port,
+                        panel.Address,
+                        panel.Name,
+                        Inputs = panel.Inputs
+                            .OrderBy(point => point.Number)
+                            .Select(point => new InputPointDto(
+                                point.Id, point.Number, point.Name, point.Contact, point.Supervised, point.Monitored, point.Dedicated))
+                            .ToList(),
+                        Outputs = panel.Outputs
+                            .OrderBy(point => point.Number)
+                            .Select(point => new OutputPointDto(point.Id, point.Number, point.Name, point.PulseSeconds))
+                            .ToList(),
+                    })
                     .ToList(),
                 RowVersion = EF.Property<byte[]>(scp, AccessControlDbContext.RowVersionPropertyName),
             })
+            .AsSplitQuery()
             .SingleOrDefaultAsync(cancellationToken);
 
         if (row is null)
@@ -81,14 +99,18 @@ internal sealed class ScpRepository(AccessControlDbContext dbContext) : IScpRepo
 
         var scp = row.Scp;
 
-        // Capacities come from the model catalog, which lives in code, so they are added after the query.
+        // Reader capacity comes from the model catalog, which lives in code, so it is added after the query.
         var panels = row.Panels
-            .Select(panel =>
-            {
-                var spec = HardwareCatalog.For(panel.Model);
-                return new SioPanelDto(panel.Id, panel.Number, panel.Model, panel.Port, panel.Address, panel.Name,
-                    spec.Inputs, spec.Outputs, spec.ReaderPorts);
-            })
+            .Select(panel => new SioPanelDto(
+                panel.Id,
+                panel.Number,
+                panel.Model,
+                panel.Port,
+                panel.Address,
+                panel.Name,
+                HardwareCatalog.For(panel.Model).ReaderPorts,
+                panel.Inputs,
+                panel.Outputs))
             .ToList();
 
         return new ScpDto(
@@ -114,6 +136,7 @@ internal sealed class ScpRepository(AccessControlDbContext dbContext) : IScpRepo
             scp.AppliedVersion,
             scp.CanChangeScpNumber,
             panels,
+            Scp.NextFreeSioNumber(panels.Select(panel => panel.Number)),
             scp.CreatedAtUtc,
             scp.CreatedBy,
             scp.UpdatedAtUtc,
@@ -121,9 +144,12 @@ internal sealed class ScpRepository(AccessControlDbContext dbContext) : IScpRepo
             row.RowVersion);
     }
 
+    /// <summary>Loads the whole aggregate; split queries avoid multiplying rows across SIOs × inputs × outputs.</summary>
     public Task<Scp?> GetForUpdateAsync(Guid id, CancellationToken cancellationToken) =>
         dbContext.Scps
-            .Include(scp => scp.SioPanels)
+            .Include(scp => scp.SioPanels).ThenInclude(panel => panel.Inputs)
+            .Include(scp => scp.SioPanels).ThenInclude(panel => panel.Outputs)
+            .AsSplitQuery()
             .SingleOrDefaultAsync(scp => scp.Id == id, cancellationToken);
 
     public async Task<IReadOnlyList<SiteOptionDto>> ListSiteOptionsAsync(CancellationToken cancellationToken) =>
@@ -199,11 +225,12 @@ internal sealed class ScpRepository(AccessControlDbContext dbContext) : IScpRepo
         SetExpectedRowVersion(scp, expectedRowVersion);
         dbContext.Scps.Remove(scp);   // the interceptor turns the controller into a soft delete
 
-        // Removing the root cascades "Deleted" to its loaded SIO rows immediately. The controller is only
-        // soft-deleted, so its SIO rows stay as they are (history and a possible restore keep their hardware layout).
-        foreach (var panel in dbContext.ChangeTracker.Entries<SioPanel>().Where(entry => entry.State == EntityState.Deleted))
+        // Removing the root cascades "Deleted" to its loaded children immediately. The controller is only
+        // soft-deleted, so its hardware layout rows stay as they are (history and a possible restore keep them).
+        foreach (var child in dbContext.ChangeTracker.Entries()
+                     .Where(entry => entry.Entity is SioPanel or InputPoint or OutputPoint && entry.State == EntityState.Deleted))
         {
-            panel.State = EntityState.Unchanged;
+            child.State = EntityState.Unchanged;
         }
 
         return SaveAsync(cancellationToken);
