@@ -4,6 +4,8 @@ using AccessControl.Application.Features.Sites.DTOs;
 using AccessControl.Application.Features.Sites.Ports;
 using AccessControl.Domain.Common.Results;
 using AccessControl.Domain.Entities;
+using AccessControl.Domain.Enums.Scps;
+using AccessControl.Infrastructure.Persistence.Features.ScpProvisioning;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
@@ -55,7 +57,16 @@ internal sealed class SiteRepository(AccessControlDbContext dbContext) : ISiteRe
                 dbContext.Scps
                     .Where(scp => scp.SiteId == site.Id)
                     .OrderBy(scp => scp.ScpNumber)
-                    .Select(scp => new SiteScpItemDto(scp.Id, scp.Name, scp.ScpNumber, scp.ConnectionMode, scp.SyncStatus))
+                    // Sync status is derived from the published version and the Gateway's state (evaluated after the query).
+                    .Select(scp => new SiteScpItemDto(
+                        scp.Id,
+                        scp.Name,
+                        scp.ScpNumber,
+                        scp.ConnectionMode,
+                        ScpSyncStatuses.Derive(
+                            scp.PublishedVersion,
+                            dbContext.Set<ScpConnectionStateRecord>().Where(state => state.ScpId == scp.Id).Select(state => state.AppliedVersion).FirstOrDefault(),
+                            dbContext.Set<ScpConnectionStateRecord>().Where(state => state.ScpId == scp.Id).Select(state => (ScpApplyState?)state.ApplyState).FirstOrDefault())))
                     .ToList(),
                 site.CreatedAtUtc,
                 site.CreatedBy,

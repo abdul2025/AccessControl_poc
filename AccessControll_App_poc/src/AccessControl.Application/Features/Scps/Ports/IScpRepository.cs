@@ -14,6 +14,18 @@ public interface IScpRepository
     /// <summary>Loads a tracked controller with its SIO panels for a write in the same operation.</summary>
     Task<Scp?> GetForUpdateAsync(Guid id, CancellationToken cancellationToken);
 
+    /// <summary>Loads the whole controller aggregate without tracking, to compare the draft with a published snapshot.</summary>
+    Task<Scp?> GetAggregateForReadAsync(Guid id, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Saves the controller (with its new published version number) and the immutable version row in one transaction;
+    /// fails with a concurrency error when the controller changed since the caller read it.
+    /// </summary>
+    Task<Result> PublishAsync(Scp scp, ScpConfigVersion version, byte[] expectedRowVersion, CancellationToken cancellationToken);
+
+    /// <returns>The compiled commands of the given version (latest when <c>null</c>), or <c>null</c> when it does not exist.</returns>
+    Task<ScpCommandListDto?> GetCommandsAsync(Guid scpId, int? version, CancellationToken cancellationToken);
+
     Task<IReadOnlyList<SiteOptionDto>> ListSiteOptionsAsync(CancellationToken cancellationToken);
 
     Task<bool> SiteExistsAsync(Guid siteId, CancellationToken cancellationToken);

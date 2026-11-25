@@ -24,10 +24,13 @@ public sealed partial class Scp
     public IReadOnlyList<Reader> Readers => _readers;
     public IReadOnlyList<Door> Doors => _doors;
 
-    /// <summary>The lowest free door (ACR) number, or <c>null</c> when all 64 are used.</summary>
-    public short? NextFreeDoorNumber() => NextFreeDoorNumber(_doors.Select(door => door.Number));
+    /// <summary>
+    /// The lowest free ACR number, or <c>null</c> when all 64 are used. Door numbers and the exit ACRs of paired doors
+    /// share the same range (1107 <c>nAcr</c>).
+    /// </summary>
+    public short? NextFreeDoorNumber() => NextFreeDoorNumber(_doors.SelectMany(door => door.UsedAcrNumbers()));
 
-    /// <summary>Shared with read models so the suggestion and the rule cannot differ.</summary>
+    /// <summary>Shared with read models so the suggestion and the rule cannot differ. Pass every used ACR number.</summary>
     public static short? NextFreeDoorNumber(IEnumerable<short> usedNumbers)
     {
         var used = usedNumbers.ToHashSet();
@@ -125,9 +128,10 @@ public sealed partial class Scp
         short heldOpenSeconds,
         DoorAccessMode accessMode)
     {
-        if (_doors.Count >= HardwareCatalog.MaxDoorsPerScp)
+        if (_doors.Sum(door => door.UsedAcrNumbers().Count()) >= HardwareCatalog.MaxDoorsPerScp)
         {
-            return Result.Failure(DoorLimitErrorCode, $"A controller can have at most {HardwareCatalog.MaxDoorsPerScp} doors.");
+            return Result.Failure(DoorLimitErrorCode,
+                $"A controller has {HardwareCatalog.MaxDoorsPerScp} ACRs; doors and exit readers use them all.");
         }
 
         var door = Door.CreateEmpty();
@@ -247,6 +251,14 @@ public sealed partial class Scp
             return Result.Failure(DuplicateDoorNumberErrorCode, "Another door on this controller already uses this number.");
         }
 
+        // Exit readers occupy ACR numbers too (paired ACRs), so a door number must not collide with one.
+        var otherAcrNumbers = otherDoors.SelectMany(other => other.UsedAcrNumbers()).ToHashSet();
+        if (otherDoors.FirstOrDefault(other => other.ExitAcrNumber == number) is { } pairedDoor)
+        {
+            return Result.Failure(DuplicateDoorNumberErrorCode,
+                $"ACR {number} is used by the exit reader of door {pairedDoor.Number} \"{pairedDoor.Name}\". Choose another number.");
+        }
+
         var trimmed = Door.NormalizeName(name);
         if (otherDoors.Any(other => string.Equals(other.Name, trimmed, StringComparison.OrdinalIgnoreCase)))
         {
@@ -320,7 +332,22 @@ public sealed partial class Scp
             return Result.Failure(ValidationErrorCode, "The door contact and the exit button must be different inputs.");
         }
 
-        return door.Apply(number, name, entryReaderId, exitReaderId, lockOutputId, doorContactInputId, exitButtonInputId,
-            strikeMinSeconds, strikeMaxSeconds, heldOpenSeconds, accessMode);
+        // The exit reader's paired ACR keeps its number while it stays valid; otherwise it takes the lowest free one.
+        short? exitAcrNumber = null;
+        if (exitReaderId is not null)
+        {
+            exitAcrNumber = door.ExitAcrNumber is { } current && current != number && !otherAcrNumbers.Contains(current)
+                ? current
+                : NextFreeDoorNumber(otherAcrNumbers.Append(number));
+
+            if (exitAcrNumber is null)
+            {
+                return Result.Failure(DoorLimitErrorCode,
+                    $"No free ACR is left for the exit reader; a controller has {HardwareCatalog.MaxDoorsPerScp} ACRs.");
+            }
+        }
+
+        return door.Apply(number, name, entryReaderId, exitReaderId, exitAcrNumber, lockOutputId, doorContactInputId,
+            exitButtonInputId, strikeMinSeconds, strikeMaxSeconds, heldOpenSeconds, accessMode);
     }
 }

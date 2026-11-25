@@ -5,6 +5,8 @@ using AccessControl.Application.Features.Scps.Ports;
 using AccessControl.Domain.Catalog;
 using AccessControl.Domain.Common.Results;
 using AccessControl.Domain.Entities;
+using AccessControl.Domain.Enums.Scps;
+using AccessControl.Infrastructure.Persistence.Features.ScpProvisioning;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
@@ -36,13 +38,15 @@ internal sealed class ScpRepository(AccessControlDbContext dbContext) : IScpRepo
         }
 
         var totalCount = await query.CountAsync(cancellationToken);
-        var items = await query
+        var states = dbContext.Set<ScpConnectionStateRecord>();
+        var rows = await query
             .Join(dbContext.Sites, scp => scp.SiteId, site => site.Id, (scp, site) => new { scp, site.Code })
             .OrderBy(row => row.scp.ScpNumber)
             .ThenBy(row => row.scp.Id)
             .Skip(request.Skip)
             .Take(request.PageSize)
-            .Select(row => new ScpListItemDto(
+            .Select(row => new
+            {
                 row.scp.Id,
                 row.scp.Name,
                 row.scp.ScpNumber,
@@ -50,8 +54,23 @@ internal sealed class ScpRepository(AccessControlDbContext dbContext) : IScpRepo
                 row.scp.ConnectionMode,
                 row.scp.SerialNumber,
                 row.scp.IpAddress,
-                row.scp.SyncStatus))
+                row.scp.PublishedVersion,
+                AppliedVersion = states.Where(state => state.ScpId == row.scp.Id).Select(state => state.AppliedVersion).FirstOrDefault(),
+                ApplyState = states.Where(state => state.ScpId == row.scp.Id).Select(state => (ScpApplyState?)state.ApplyState).FirstOrDefault(),
+            })
             .ToListAsync(cancellationToken);
+
+        var items = rows
+            .Select(row => new ScpListItemDto(
+                row.Id,
+                row.Name,
+                row.ScpNumber,
+                row.Code,
+                row.ConnectionMode,
+                row.SerialNumber,
+                row.IpAddress,
+                ScpSyncStatuses.Derive(row.PublishedVersion, row.AppliedVersion, row.ApplyState)))
+            .ToList();
 
         return new PagedResponse<ScpListItemDto>(items, request.Page, request.PageSize, totalCount);
     }
@@ -165,6 +184,7 @@ internal sealed class ScpRepository(AccessControlDbContext dbContext) : IScpRepo
                 readerNames.GetValueOrDefault(door.EntryReaderId) ?? "?",
                 door.ExitReaderId,
                 NameOf(readerNames, door.ExitReaderId),
+                door.ExitAcrNumber,
                 door.LockOutputId,
                 outputNames.GetValueOrDefault(door.LockOutputId) ?? "?",
                 door.DoorContactInputId,
@@ -176,6 +196,22 @@ internal sealed class ScpRepository(AccessControlDbContext dbContext) : IScpRepo
                 door.HeldOpenSeconds,
                 door.AccessMode))
             .ToList();
+
+        var latestVersion = await GetLatestVersionAsync(id, cancellationToken);
+        var connection = await dbContext.Set<ScpConnectionStateRecord>()
+            .AsNoTracking()
+            .Where(state => state.ScpId == id)
+            .Select(state => new ScpConnectionDto(
+                state.IsOnline,
+                state.LastSeenAtUtc,
+                state.FirmwareVersion,
+                state.MacAddress,
+                state.ReportedScpId,
+                state.AppliedVersion,
+                state.ApplyState,
+                state.LastError))
+            .SingleOrDefaultAsync(cancellationToken);
+        var latestRun = await GetLatestApplyRunAsync(id, cancellationToken);
 
         return new ScpDto(
             scp.Id,
@@ -195,15 +231,19 @@ internal sealed class ScpRepository(AccessControlDbContext dbContext) : IScpRepo
                 scp.Allocation.Cards,
                 scp.Allocation.AccessLevelsPerCard,
                 scp.Allocation.GmtOffsetSeconds),
-            scp.SyncStatus,
+            ScpSyncStatuses.Derive(scp.PublishedVersion, connection?.AppliedVersion, connection?.ApplyState),
             scp.PublishedVersion,
-            scp.AppliedVersion,
+            connection?.AppliedVersion,
             scp.CanChangeScpNumber,
+            HasUnpublishedChanges: false,   // decided by the service, which compares the draft with the snapshot
+            latestVersion,
+            connection,
+            latestRun,
             panels,
             Scp.NextFreeSioNumber(panels.Select(panel => panel.Number)),
             readers,
             doors,
-            Scp.NextFreeDoorNumber(doors.Select(door => door.Number)),
+            Scp.NextFreeDoorNumber(row.Doors.SelectMany(door => door.ExitAcrNumber is { } exitAcr ? [door.Number, exitAcr] : new[] { door.Number })),
             scp.CreatedAtUtc,
             scp.CreatedBy,
             scp.UpdatedAtUtc,
@@ -220,6 +260,108 @@ internal sealed class ScpRepository(AccessControlDbContext dbContext) : IScpRepo
             .Include(scp => scp.Doors)
             .AsSplitQuery()
             .SingleOrDefaultAsync(scp => scp.Id == id, cancellationToken);
+
+    public Task<Scp?> GetAggregateForReadAsync(Guid id, CancellationToken cancellationToken) =>
+        dbContext.Scps
+            .AsNoTracking()
+            .Include(scp => scp.SioPanels).ThenInclude(panel => panel.Inputs)
+            .Include(scp => scp.SioPanels).ThenInclude(panel => panel.Outputs)
+            .Include(scp => scp.Readers)
+            .Include(scp => scp.Doors)
+            .AsSplitQuery()
+            .SingleOrDefaultAsync(scp => scp.Id == id, cancellationToken);
+
+    public Task<Result> PublishAsync(Scp scp, ScpConfigVersion version, byte[] expectedRowVersion, CancellationToken cancellationToken)
+    {
+        SetExpectedRowVersion(scp, expectedRowVersion);
+        dbContext.Entry(scp).State = EntityState.Modified;
+        dbContext.Add(version);
+        return SaveAsync(cancellationToken);
+    }
+
+    public async Task<ScpCommandListDto?> GetCommandsAsync(Guid scpId, int? version, CancellationToken cancellationToken)
+    {
+        var scp = await dbContext.Scps
+            .AsNoTracking()
+            .Where(item => item.Id == scpId)
+            .Select(item => new { item.ScpNumber, item.Name })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (scp is null)
+        {
+            return null;
+        }
+
+        var versions = dbContext.Set<ScpConfigVersion>().AsNoTracking().Where(item => item.ScpId == scpId);
+        var selected = await versions
+            .Where(item => version == null || item.Version == version)
+            .OrderByDescending(item => item.Version)
+            .Select(item => new { item.Id, item.Version, item.PublishedAtUtc, item.PublishedBy, item.CompiledAtUtc, item.CompileError })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (selected is null)
+        {
+            return null;
+        }
+
+        var allVersions = await versions
+            .OrderByDescending(item => item.Version)
+            .Select(item => item.Version)
+            .ToListAsync(cancellationToken);
+        var commands = await dbContext.Set<ScpConfigCommandRecord>()
+            .AsNoTracking()
+            .Where(command => command.VersionId == selected.Id)
+            .OrderBy(command => command.Order)
+            .Select(command => new ScpCompiledCommandDto(command.Order, command.CommandNumber, command.Target, command.Text))
+            .ToListAsync(cancellationToken);
+
+        return new ScpCommandListDto(
+            scpId,
+            scp.ScpNumber,
+            scp.Name,
+            selected.Version,
+            selected.PublishedAtUtc,
+            selected.PublishedBy,
+            selected.CompiledAtUtc,
+            selected.CompileError,
+            allVersions,
+            commands);
+    }
+
+    private Task<ScpVersionSummaryDto?> GetLatestVersionAsync(Guid scpId, CancellationToken cancellationToken) =>
+        dbContext.Set<ScpConfigVersion>()
+            .AsNoTracking()
+            .Where(version => version.ScpId == scpId)
+            .OrderByDescending(version => version.Version)
+            .Select(version => new ScpVersionSummaryDto(
+                version.Version,
+                version.PublishedAtUtc,
+                version.PublishedBy,
+                version.SnapshotHash,
+                version.CompiledAtUtc,
+                version.CompileError,
+                dbContext.Set<ScpConfigCommandRecord>().Count(command => command.VersionId == version.Id)))
+            .FirstOrDefaultAsync(cancellationToken);
+
+    private async Task<ScpApplyRunDto?> GetLatestApplyRunAsync(Guid scpId, CancellationToken cancellationToken)
+    {
+        var run = await dbContext.Set<ScpApplyRunRecord>()
+            .AsNoTracking()
+            .Where(item => item.ScpId == scpId)
+            .OrderByDescending(item => item.StartedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (run is null)
+        {
+            return null;
+        }
+
+        var results = await dbContext.Set<ScpApplyResultRecord>()
+            .AsNoTracking()
+            .Where(result => result.RunId == run.Id)
+            .OrderBy(result => result.Order)
+            .Select(result => new ScpApplyResultDto(result.Order, result.CommandNumber, result.Target, result.Result, result.Detail, result.AtUtc))
+            .ToListAsync(cancellationToken);
+
+        return new ScpApplyRunDto(run.Version, run.StartedAtUtc, run.FinishedAtUtc, run.Outcome, run.Reason, results);
+    }
 
     public async Task<IReadOnlyList<SiteOptionDto>> ListSiteOptionsAsync(CancellationToken cancellationToken) =>
         await dbContext.Sites
@@ -337,6 +479,12 @@ internal sealed class ScpRepository(AccessControlDbContext dbContext) : IScpRepo
             if (sql.Message.Contains(ScpConfiguration.SiteNameIndexName, StringComparison.Ordinal))
             {
                 return Result.Failure(ScpErrors.DuplicateName, ScpErrors.DuplicateNameMessage);
+            }
+
+            // Two publishes raced for the same version number: the second one lost.
+            if (sql.Message.Contains(ScpConfigVersionConfiguration.ScpVersionIndexName, StringComparison.Ordinal))
+            {
+                return Result.Failure(ScpErrors.ConcurrencyConflict, ScpErrors.ConcurrencyConflictMessage);
             }
 
             throw;

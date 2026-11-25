@@ -38,6 +38,36 @@ public static class ScpLabels
         _ => "neutral",
     };
 
+    public static string ToLabel(ScpApplyOutcome outcome) => outcome switch
+    {
+        ScpApplyOutcome.Running => "Running",
+        ScpApplyOutcome.Succeeded => "Applied",
+        ScpApplyOutcome.UpToDate => "Already up to date",
+        ScpApplyOutcome.Failed => "Failed",
+        ScpApplyOutcome.Interrupted => "Interrupted (connection lost)",
+        _ => outcome.ToString(),
+    };
+
+    public static string ToCssModifier(ScpApplyOutcome outcome) => outcome switch
+    {
+        ScpApplyOutcome.Succeeded or ScpApplyOutcome.UpToDate => "success",
+        ScpApplyOutcome.Running => "info",
+        ScpApplyOutcome.Failed => "danger",
+        ScpApplyOutcome.Interrupted => "warning",
+        _ => "neutral",
+    };
+
+    public static string ToLabel(ScpCommandResult result) => result switch
+    {
+        ScpCommandResult.Ok => "OK",
+        ScpCommandResult.Nak => "Rejected (NAK)",
+        ScpCommandResult.NoReply => "No reply",
+        ScpCommandResult.PostRejected => "Not queued by the driver",
+        _ => result.ToString(),
+    };
+
+    public static string ToCssModifier(ScpCommandResult result) => result == ScpCommandResult.Ok ? "success" : "danger";
+
     public static string ToLabel(ScpModel model) => model switch
     {
         ScpModel.X1100 => "HID Aero X1100",

@@ -22,14 +22,23 @@ public sealed class Door : BaseEntity
     {
     }
 
-    /// <summary>ACR number on the controller (0-63).</summary>
+    /// <summary>ACR number of the entry side on the controller (0-63) — the primary ACR of a paired door.</summary>
     public short Number { get; private set; }
 
     public string Name { get; private set; } = null!;
     public Guid EntryReaderId { get; private set; }
 
-    /// <summary>Optional reader on the other side; how it maps to ACRs is decided in step 4 (open item 15).</summary>
+    /// <summary>
+    /// Optional reader on the other side. It becomes a second, paired ACR (command 115 secondary reader, SDK §8.1.3)
+    /// so entry and exit events carry different ACR numbers (docs/plans/step-4-publish-and-provisioning.md §4.1).
+    /// </summary>
     public Guid? ExitReaderId { get; private set; }
+
+    /// <summary>
+    /// ACR number of the exit reader's paired ACR; set whenever <see cref="ExitReaderId"/> is set. Assigned by the
+    /// controller and kept stable while the exit reader stays, because events and access levels refer to it.
+    /// </summary>
+    public short? ExitAcrNumber { get; private set; }
 
     public Guid LockOutputId { get; private set; }
     public Guid? DoorContactInputId { get; private set; }
@@ -49,6 +58,7 @@ public sealed class Door : BaseEntity
         string name,
         Guid entryReaderId,
         Guid? exitReaderId,
+        short? exitAcrNumber,
         Guid lockOutputId,
         Guid? doorContactInputId,
         Guid? exitButtonInputId,
@@ -87,6 +97,7 @@ public sealed class Door : BaseEntity
         Name = trimmedName;
         EntryReaderId = entryReaderId;
         ExitReaderId = exitReaderId;
+        ExitAcrNumber = exitReaderId is null ? null : exitAcrNumber;
         LockOutputId = lockOutputId;
         DoorContactInputId = doorContactInputId;
         ExitButtonInputId = exitButtonInputId;
@@ -96,6 +107,9 @@ public sealed class Door : BaseEntity
         AccessMode = accessMode;
         return Result.Success();
     }
+
+    /// <summary>The ACR numbers this door occupies on the controller: its own number and, if paired, the exit ACR.</summary>
+    internal IEnumerable<short> UsedAcrNumbers() => ExitAcrNumber is { } exitAcr ? [Number, exitAcr] : [Number];
 
     /// <summary>Every reader and point this door uses (for "one door per reader / point" checks).</summary>
     internal IEnumerable<Guid> UsedReaderIds() => ExitReaderId is { } exit ? [EntryReaderId, exit] : [EntryReaderId];

@@ -27,7 +27,7 @@ public sealed class ScpFormViewModel : IValidatableObject
 
     [Required]
     [Range(ScpEntity.MinScpNumber, ScpEntity.MaxScpNumber)]
-    [Display(Name = "SCP number")]
+    [Display(Name = "SCP Host assigning number")]
     public short? ScpNumber { get; set; }
 
     [Display(Name = "Model")]
@@ -78,11 +78,6 @@ public sealed class ScpFormViewModel : IValidatableObject
     /// <summary>Quick field-level feedback for the mode-dependent fields; the domain enforces the same rules.</summary>
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (ConnectionMode == Domain.Enums.Scps.ConnectionMode.IpClient && SerialNumber is null)
-        {
-            yield return new ValidationResult("Serial number is required for an IP Client controller.", [nameof(SerialNumber)]);
-        }
-
         if (ConnectionMode == Domain.Enums.Scps.ConnectionMode.IpServer && string.IsNullOrWhiteSpace(IpAddress))
         {
             yield return new ValidationResult("IP address or host name is required for an IP Server controller.", [nameof(IpAddress)]);

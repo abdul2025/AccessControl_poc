@@ -38,6 +38,9 @@ namespace AccessControl.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("EntryReaderId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<short?>("ExitAcrNumber")
+                        .HasColumnType("smallint");
+
                     b.Property<Guid?>("ExitButtonInputId")
                         .HasColumnType("uniqueidentifier");
 
@@ -91,6 +94,11 @@ namespace AccessControl.Infrastructure.Persistence.Migrations
                     b.HasIndex("LockOutputId")
                         .IsUnique()
                         .HasDatabaseName("IX_Doors_LockOutputId");
+
+                    b.HasIndex("ScpId", "ExitAcrNumber")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Doors_ScpId_ExitAcrNumber")
+                        .HasFilter("[ExitAcrNumber] IS NOT NULL");
 
                     b.HasIndex("ScpId", "Name")
                         .IsUnique()
@@ -229,9 +237,6 @@ namespace AccessControl.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<int?>("AppliedVersion")
-                        .HasColumnType("int");
-
                     b.Property<int>("ConnectionMode")
                         .HasColumnType("int");
 
@@ -290,9 +295,6 @@ namespace AccessControl.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("SiteId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<int>("SyncStatus")
-                        .HasColumnType("int");
-
                     b.Property<DateTimeOffset?>("UpdatedAtUtc")
                         .HasColumnType("datetimeoffset");
 
@@ -339,6 +341,56 @@ namespace AccessControl.Infrastructure.Persistence.Migrations
                         .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("Scps", (string)null);
+                });
+
+            modelBuilder.Entity("AccessControl.Domain.Entities.ScpConfigVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CommandHash")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("CompileError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTimeOffset?>("CompiledAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("PublishedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("PublishedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<Guid>("ScpId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SnapshotHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScpId", "Version")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ScpConfigVersions_ScpId_Version");
+
+                    b.ToTable("ScpConfigVersions", (string)null);
                 });
 
             modelBuilder.Entity("AccessControl.Domain.Entities.SioPanel", b =>
@@ -442,6 +494,153 @@ namespace AccessControl.Infrastructure.Persistence.Migrations
                     b.ToTable("Sites", (string)null);
                 });
 
+            modelBuilder.Entity("AccessControl.Infrastructure.Persistence.Features.ScpProvisioning.ScpApplyResultRecord", b =>
+                {
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("AtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<short>("CommandNumber")
+                        .HasColumnType("smallint");
+
+                    b.Property<string>("Detail")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("Result")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Tag")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Target")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.HasKey("RunId", "Order");
+
+                    b.ToTable("ScpApplyResults", (string)null);
+                });
+
+            modelBuilder.Entity("AccessControl.Infrastructure.Persistence.Features.ScpProvisioning.ScpApplyRunRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("FailedOrder")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("FinishedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("Outcome")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<Guid>("ScpId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("StartedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScpId", "StartedAtUtc")
+                        .HasDatabaseName("IX_ScpApplyRuns_ScpId_StartedAtUtc");
+
+                    b.ToTable("ScpApplyRuns", (string)null);
+                });
+
+            modelBuilder.Entity("AccessControl.Infrastructure.Persistence.Features.ScpProvisioning.ScpConfigCommandRecord", b =>
+                {
+                    b.Property<Guid>("VersionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("int");
+
+                    b.Property<short>("CommandNumber")
+                        .HasColumnType("smallint");
+
+                    b.Property<string>("Target")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(1000)");
+
+                    b.HasKey("VersionId", "Order");
+
+                    b.ToTable("ScpConfigCommands", (string)null);
+                });
+
+            modelBuilder.Entity("AccessControl.Infrastructure.Persistence.Features.ScpProvisioning.ScpConnectionStateRecord", b =>
+                {
+                    b.Property<Guid>("ScpId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("AppliedVersion")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ApplyState")
+                        .HasColumnType("int");
+
+                    b.Property<double?>("ClockOffsetSeconds")
+                        .HasColumnType("float");
+
+                    b.Property<string>("FirmwareVersion")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<bool>("IsOnline")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTimeOffset?>("LastIdReportAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("LastSeenAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("MacAddress")
+                        .HasMaxLength(17)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(17)");
+
+                    b.Property<DateTimeOffset?>("MatchedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int?>("ReportedScpId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SessionScpNumber")
+                        .HasColumnType("int");
+
+                    b.HasKey("ScpId");
+
+                    b.ToTable("ScpConnectionStates", (string)null);
+                });
+
             modelBuilder.Entity("AccessControl.Domain.Entities.Door", b =>
                 {
                     b.HasOne("AccessControl.Domain.Entities.InputPoint", null)
@@ -520,12 +719,57 @@ namespace AccessControl.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("AccessControl.Domain.Entities.ScpConfigVersion", b =>
+                {
+                    b.HasOne("AccessControl.Domain.Entities.Scp", null)
+                        .WithMany()
+                        .HasForeignKey("ScpId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("AccessControl.Domain.Entities.SioPanel", b =>
                 {
                     b.HasOne("AccessControl.Domain.Entities.Scp", null)
                         .WithMany("SioPanels")
                         .HasForeignKey("ScpId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AccessControl.Infrastructure.Persistence.Features.ScpProvisioning.ScpApplyResultRecord", b =>
+                {
+                    b.HasOne("AccessControl.Infrastructure.Persistence.Features.ScpProvisioning.ScpApplyRunRecord", null)
+                        .WithMany()
+                        .HasForeignKey("RunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AccessControl.Infrastructure.Persistence.Features.ScpProvisioning.ScpApplyRunRecord", b =>
+                {
+                    b.HasOne("AccessControl.Domain.Entities.Scp", null)
+                        .WithMany()
+                        .HasForeignKey("ScpId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AccessControl.Infrastructure.Persistence.Features.ScpProvisioning.ScpConfigCommandRecord", b =>
+                {
+                    b.HasOne("AccessControl.Domain.Entities.ScpConfigVersion", null)
+                        .WithMany()
+                        .HasForeignKey("VersionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AccessControl.Infrastructure.Persistence.Features.ScpProvisioning.ScpConnectionStateRecord", b =>
+                {
+                    b.HasOne("AccessControl.Domain.Entities.Scp", null)
+                        .WithOne()
+                        .HasForeignKey("AccessControl.Infrastructure.Persistence.Features.ScpProvisioning.ScpConnectionStateRecord", "ScpId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

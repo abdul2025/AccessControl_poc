@@ -21,6 +21,14 @@ public interface IScpService
 
     Task<Result> DeleteAsync(Guid id, byte[] rowVersion, CancellationToken cancellationToken);
 
+    // Publishing (spec §3.7): the Gateway applies only published versions.
+
+    /// <returns>The new version number.</returns>
+    Task<Result<int>> PublishAsync(Guid id, byte[] rowVersion, CancellationToken cancellationToken);
+
+    /// <summary>The SDK commands the Gateway compiled for a published version (latest when <paramref name="version"/> is null).</summary>
+    Task<Result<ScpCommandListDto>> GetCommandsAsync(Guid id, int? version, CancellationToken cancellationToken);
+
     // Hardware layout (SIO panels and their points) — changed only through the controller aggregate.
 
     Task<Result> AddSioAsync(Guid scpId, AddSioDto dto, CancellationToken cancellationToken);

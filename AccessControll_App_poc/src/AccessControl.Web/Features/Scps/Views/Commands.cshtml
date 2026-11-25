@@ -1,0 +1,91 @@
+@model ScpCommandListDto
+@{
+    ViewData["Title"] = $"SCP {Model.ScpNumber} — commands v{Model.Version}";
+}
+
+<section class="form-card" aria-labelledby="commands-title">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">Controller · <a asp-action="Details" asp-route-id="@Model.ScpId">SCP @Model.ScpNumber — @Model.ScpName</a></p>
+            <h1 id="commands-title">SDK commands — version @Model.Version</h1>
+        </div>
+        @if (Model.Versions.Count > 1)
+        {
+            <form method="get" asp-action="Commands" asp-route-id="@Model.ScpId" class="filter-bar">
+                <div class="filter-bar__field">
+                    <label for="version">Version</label>
+                    <select id="version" name="version" data-auto-submit>
+                        @foreach (var version in Model.Versions)
+                        {
+                            <option value="@version" selected="@(version == Model.Version)">v@(version)</option>
+                        }
+                    </select>
+                </div>
+                <div class="filter-bar__actions"><button type="submit" class="button button--secondary">Show</button></div>
+            </form>
+        }
+    </div>
+
+    <dl class="detail-list">
+        <dt>Published</dt>
+        <dd>@AuditDisplay.Format(Model.PublishedAtUtc) by @AuditDisplay.User(Model.PublishedBy)</dd>
+        <dt>Compiled by the Gateway</dt>
+        <dd>@AuditDisplay.Format(Model.CompiledAtUtc)</dd>
+    </dl>
+
+    @if (Model.CompileError is { } compileError)
+    {
+        <p class="notice notice--danger" role="alert">The Gateway could not compile this version: @compileError</p>
+    }
+    else if (Model.CompiledAtUtc is null)
+    {
+        <p class="notice notice--info" role="status">
+            The Gateway has not compiled this version yet. It does so within a few seconds while it is running; reload
+            this page afterwards.
+        </p>
+    }
+
+    @if (Model.Commands.Count > 0)
+    {
+        <p class="field-hint">
+            Sent in this order after the connection commands (1107, 1105, 1116, 302) when the controller's stored
+            version differs. Shown in HID string form — the same values the Gateway sends as structures.
+        </p>
+        <div class="table-card">
+            <table class="data-table data-table--compact">
+                <thead>
+                    <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Command</th>
+                        <th scope="col">Configures</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var command in Model.Commands)
+                    {
+                        <tr>
+                            <td>@command.Order</td>
+                            <td><code>@command.Text</code></td>
+                            <td>@command.Target</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <div class="form-actions">
+        <a class="button button--secondary" asp-action="Details" asp-route-id="@Model.ScpId">Back to controller</a>
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        // Same behaviour as the list filters: switching the version reloads the page.
+        document.addEventListener("change", (event) => {
+            if (event.target.matches("[data-auto-submit]")) {
+                event.target.form.requestSubmit();
+            }
+        });
+    </script>
+}

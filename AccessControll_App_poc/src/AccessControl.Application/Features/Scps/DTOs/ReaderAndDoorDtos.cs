@@ -24,6 +24,7 @@ public sealed record DoorDto(
     string EntryReaderName,
     Guid? ExitReaderId,
     string? ExitReaderName,
+    short? ExitAcrNumber,
     Guid LockOutputId,
     string LockOutputName,
     Guid? DoorContactInputId,

@@ -85,9 +85,13 @@
                                 {
                                     @item.IpAddress
                                 }
+                                else if (item.SerialNumber is { } serial)
+                                {
+                                    @:Serial @serial
+                                }
                                 else
                                 {
-                                    @:Serial @item.SerialNumber
+                                    <span class="field-hint">Awaiting adoption</span>
                                 }
                             </td>
                             <td><partial name="_ScpSyncStatusBadge" model="item.SyncStatus" /></td>

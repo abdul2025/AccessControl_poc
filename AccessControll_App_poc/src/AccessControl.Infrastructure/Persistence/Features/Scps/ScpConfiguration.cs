@@ -21,7 +21,6 @@ internal sealed class ScpConfiguration : IEntityTypeConfiguration<Scp>
         builder.Property(scp => scp.IpAddress).HasMaxLength(Scp.HostMaxLength);
         builder.Property(scp => scp.Model).HasConversion<int>();
         builder.Property(scp => scp.ConnectionMode).HasConversion<int>();
-        builder.Property(scp => scp.SyncStatus).HasConversion<int>();
 
         // Allocation is a value object stored as columns on the controller row (Allocation_Transactions, …).
         builder.ComplexProperty(scp => scp.Allocation, allocation =>

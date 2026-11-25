@@ -71,7 +71,10 @@
     <div class="section-heading">
         <div>
             <h2 id="scp-doors-title">Doors</h2>
-            <p class="field-hint">Each door links a reader with its lock relay, door contact and exit button.</p>
+            <p class="field-hint">
+                Each door links a reader with its lock relay, door contact and exit button. A door with an exit reader
+                uses two paired ACRs: the entry ACR controls the door, the exit ACR reports exits.
+            </p>
         </div>
         @if (scp.Readers.Count > 0 && scp.NextFreeDoorNumber is not null)
         {
@@ -91,6 +94,7 @@
                     <tr>
                         <th scope="col">#</th>
                         <th scope="col">Name</th>
+                        <th scope="col" title="ACR numbers on the controller: entry / exit (paired)">ACR</th>
                         <th scope="col">Readers</th>
                         <th scope="col">Lock</th>
                         <th scope="col">Door contact</th>
@@ -106,6 +110,7 @@
                         <tr>
                             <th scope="row">@door.Number</th>
                             <td>@door.Name</td>
+                            <td>@(door.ExitAcrNumber is { } exitAcr ? $"{door.Number} / {exitAcr}" : door.Number.ToString(System.Globalization.CultureInfo.InvariantCulture))</td>
                             <td>
                                 In: @door.EntryReaderName
                                 @if (door.ExitReaderName is { } exit)

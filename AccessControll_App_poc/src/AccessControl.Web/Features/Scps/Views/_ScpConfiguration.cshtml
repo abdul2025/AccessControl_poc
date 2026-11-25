@@ -1,0 +1,125 @@
+@model ScpDetailsViewModel
+@{
+    var scp = Model.Scp;
+    var latest = scp.LatestVersion;
+    var connection = scp.Connection;
+    var run = scp.LatestApplyRun;
+    var canPublish = latest is null || scp.HasUnpublishedChanges;
+}
+
+<section id="configuration" aria-labelledby="scp-config-title">
+    <div class="section-heading">
+        <div>
+            <h2 id="scp-config-title">Configuration</h2>
+            <p class="field-hint">
+                Edits change the draft only. Publishing freezes it as a new version; the Gateway applies published
+                versions to the controller when it is connected.
+            </p>
+        </div>
+        <form method="post" asp-action="Publish" asp-route-id="@scp.Id">
+            <input type="hidden" name="rowVersion" value="@Model.RowVersion" />
+            <button type="submit" class="button @(canPublish ? "button--primary" : "button--secondary")"
+                    title="@(canPublish ? "Publish the current configuration as a new version" : "No changes since the last version — publishing again makes the Gateway re-apply it")">
+                @(latest is null ? "Publish configuration" : canPublish ? $"Publish version {latest.Version + 1}" : "Publish again")
+            </button>
+        </form>
+    </div>
+
+    @if (scp.HasUnpublishedChanges)
+    {
+        <p class="notice notice--warning" role="status">
+            This controller has unpublished changes. The controller keeps version @latest!.Version until you publish.
+        </p>
+    }
+
+    <dl class="detail-list">
+        <dt>Status</dt>
+        <dd><partial name="_ScpSyncStatusBadge" model="scp.SyncStatus" /></dd>
+        <dt>Published version</dt>
+        <dd>
+            @if (latest is null)
+            {
+                @:—
+            }
+            else
+            {
+                <span>v@(latest.Version) · @AuditDisplay.Format(latest.PublishedAtUtc) by @AuditDisplay.User(latest.PublishedBy)</span>
+                @:·
+                <a asp-action="Commands" asp-route-id="@scp.Id" asp-route-version="@latest.Version">
+                    @(latest.CompiledAtUtc is null ? "Commands (not compiled yet)" : $"{latest.CommandCount} commands")
+                </a>
+            }
+        </dd>
+        <dt>Applied version</dt>
+        <dd>@(scp.AppliedVersion is { } applied ? $"v{applied}" : "—")</dd>
+        <dt>Connection</dt>
+        <dd>
+            @if (connection is null)
+            {
+                @:Never connected
+            }
+            else
+            {
+                <span class="status-badge status-badge--@(connection.IsOnline ? "success" : "neutral")">@(connection.IsOnline ? "Online" : "Offline")</span>
+                @: last seen @AuditDisplay.Format(connection.LastSeenAtUtc) · firmware @AuditDisplay.Optional(connection.FirmwareVersion)
+                @if (connection.ReportedScpId is { } reportedId && reportedId != scp.ScpNumber)
+                {
+                    @: · reports SCP ID @reportedId
+                }
+            }
+        </dd>
+    </dl>
+
+    @if (latest?.CompileError is { } compileError)
+    {
+        <p class="notice notice--danger" role="alert">The Gateway could not compile version @latest.Version: @compileError</p>
+    }
+
+    @if (connection?.LastError is { } lastError && scp.SyncStatus == ScpSyncStatus.Failed)
+    {
+        <p class="notice notice--danger" role="alert">@lastError</p>
+    }
+
+    @if (run is not null)
+    {
+        <details class="advanced" @(run.Outcome == ScpApplyOutcome.Failed ? "open" : null)>
+            <summary>
+                Last apply: v@(run.Version) ·
+                <span class="status-badge status-badge--@ScpLabels.ToCssModifier(run.Outcome)">@ScpLabels.ToLabel(run.Outcome)</span>
+                · @AuditDisplay.Format(run.StartedAtUtc)
+            </summary>
+            @if (run.Reason is { } reason)
+            {
+                <p class="field-hint">@reason</p>
+            }
+            @if (run.Results.Count > 0)
+            {
+                <div class="table-card">
+                    <table class="data-table data-table--compact">
+                        <thead>
+                            <tr>
+                                <th scope="col">#</th>
+                                <th scope="col">Command</th>
+                                <th scope="col">Configures</th>
+                                <th scope="col">Result</th>
+                                <th scope="col">Detail</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var result in run.Results)
+                            {
+                                <tr>
+                                    <td>@result.Order</td>
+                                    <td>@result.CommandNumber</td>
+                                    <td>@result.Target</td>
+                                    <td><span class="status-badge status-badge--@ScpLabels.ToCssModifier(result.Result)">@ScpLabels.ToLabel(result.Result)</span></td>
+                                    <td>@AuditDisplay.Optional(result.Detail)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </details>
+    }
+</section>

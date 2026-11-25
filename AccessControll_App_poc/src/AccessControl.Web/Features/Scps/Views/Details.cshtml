@@ -19,21 +19,7 @@
     <partial name="_StatusMessages" />
     <partial name="_ScpSummary" model="Model" />
 
-    <section aria-labelledby="scp-config-title">
-        <h2 id="scp-config-title">Configuration</h2>
-        <dl class="detail-list">
-            <dt>Status</dt>
-            <dd><partial name="_ScpSyncStatusBadge" model="scp.SyncStatus" /></dd>
-            <dt>Published version</dt>
-            <dd>@AuditDisplay.Optional(scp.PublishedVersion)</dd>
-            <dt>Applied version</dt>
-            <dd>@AuditDisplay.Optional(scp.AppliedVersion)</dd>
-        </dl>
-        <p class="field-hint">
-            The configuration is saved here and applied to the controller by the Gateway once it is published
-            (publishing arrives in a later step).
-        </p>
-    </section>
+    <partial name="_ScpConfiguration" model="Model" />
 
     <partial name="_SioPanels" model="Model" />
     <partial name="_ReadersAndDoors" model="Model" />

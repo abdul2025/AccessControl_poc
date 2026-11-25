@@ -48,7 +48,7 @@ On a controller's page (step 3): **I/O panels (SIO)** — built-in SIO 0 plus ex
 inputs (general + enclosure & power supply) and relays · **Readers** — VL70LF on OSDP or Wiegand · **Doors** — reader(s),
 lock relay, door contact, exit button, times and access mode.
 
-Migrations applied: `AddSitesAndScps`, `AddSioPoints`, `DedicatedInputsNotMonitored`, `AddReadersAndDoors`.
+Migrations applied: `AddSitesAndScps`, `AddSioPoints`, `DedicatedInputsNotMonitored`, `AddReadersAndDoors`, `AddPublishAndProvisioning`.
 
 ## Migrations
 

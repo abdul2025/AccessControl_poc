@@ -30,7 +30,10 @@ public static class ScpErrors
     public const string PointInUse = ScpEntity.PointInUseErrorCode;
     public const string DoorLimit = ScpEntity.DoorLimitErrorCode;
 
+    public const string VersionNotFound = "Scp.VersionNotFound";
+
     public const string NotFoundMessage = "The controller was not found.";
+    public const string VersionNotFoundMessage = "This configuration version does not exist. Publish the controller first.";
     public const string DuplicateNumberMessage = "Another controller already uses this SCP number.";
     public const string DuplicateSerialMessage = "Another controller already uses this serial number.";
     public const string DuplicateNameMessage = "Another controller on this site already uses this name.";

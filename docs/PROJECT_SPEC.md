@@ -233,7 +233,7 @@ Each step is finished across all layers and builds cleanly before the next (code
 | 1 | **Gateway skeleton** ✅ code (2026-11-22), bench pending: driver lifetime (11/12/203), message pump, command writer (tag → CmndStatus/NAK), reply mappers, IP Client listener, acceptance 1107 → 1105 → 1116 → 302 → 303; replies **logged** (tables arrive in step 2). Acceptance is governed by the temporary `Aero:AutoAcceptControllers` flag (true only in Development) until step 4 matches controllers by serial. 203 is the only string command (no wrapper enum entry). | X1100 connects; ID report + comm status in the log | §5 |
 | 2 | **Sites & Controllers** ✅ (2026-11-23) in MVC (`Sites`, `Scps` → UI "Controllers"): CRUD, model catalog (`Domain/Catalog/HardwareCatalog`), internal SIO 0 auto-created, connection mode (IP Client: serial required, no IP; IP Server: IP + port 3001), allocation stored per controller (`ScpAllocation`: GMT offset editable at creation only; events / cards / levels display-only at §6.3 defaults until card-size limits are validated), soft delete, a site with controllers cannot be deleted; migration `AddSitesAndScps` applied | controller registry (desired state, not yet applied) | §3.7, §4 |
 | 3 | **SIO panels, inputs/outputs, readers, doors** ✅ (2026-11-23) in MVC — saved only. 3a: external X100/X200/X300 on RS-485, all points from the catalog, input contact / supervision / monitoring, relay pulse (migrations `AddSioPoints`, `DedicatedInputsNotMonitored`). 3b: readers (OSDP address 0-3 / baud / secure channel, or Wiegand + keypad) and doors (entry + optional exit reader, lock relay, door contact, exit button, lock times, held-open, access mode; one door per reader / relay / input) (migration `AddReadersAndDoors`). Plan: `docs/plans/step-3-sio-points-readers-doors.md` | full hardware configuration per controller in the DB | §3.7, §6.4, §7.1–7.3 |
-| 4 | **Publish + provisioning engine**: publish versions, match/adopt controllers, build & apply the command list, record OK/NAK, `AppliedVersion`, re-apply on reconnect; live status page | the X1100 is configured from the DB | §3.7, §5, §6 |
+| 4 | **Publish + provisioning engine**: publish versions, match/adopt controllers, build & apply the command list, record OK/NAK, `AppliedVersion`, re-apply on reconnect; live status page. Plan: `docs/plans/step-4-publish-and-provisioning.md`. **4b-1 ✅ (2026-11-24)**: Publish → immutable `ScpConfigVersions` snapshot, unpublished-changes detection, derived sync status, Commands page (filled by the Gateway from 4b-2), paired exit ACRs (`Doors.ExitAcrNumber`); migration `AddPublishAndProvisioning` applied | the X1100 is configured from the DB | §3.7, §5, §6 |
 | 5 | **Card formats** (+ raw 3:1 capture view to discover VL70LF format) | 1102 | §7.4 |
 | 6 | **Schedules & Holidays** | 1104 / 3103 | §7.5 |
 | 7 | **Access levels** | 2116 | §7.5 |
@@ -256,12 +256,16 @@ SCPs, SIOs, I/O points, readers and doors are **entered by users in the MVC**, s
 MVC (user)                                  DB                                    Gateway (SDK)
 1. Site "HQ"                            ─►  Site
 2. Controller "Main gate", SCP 1,       ─►  Controller (ScpNumber 1, X1100, IpClient,
-   X1100, IP Client, serial 2001843          Serial 2001843, Status NotPublished)
+   X1100, IP Client (serial left empty)      Serial null, Status NotPublished)
                                              + SIO 0 (internal, model 196) auto-created
 3. Name I/O, add VL70LF reader, door 1  ─►  SIO / Inputs / Outputs / Readers / Doors
 4. "Publish configuration"              ─►  ConfigVersion 1 (who, when) → Pending
-                                                                          ◄─ X1100 connects (ID report, serial)
-                                                                             match → "Main gate"
+                                                                          ◄─ X1100 connects (ID report, serial 2001843)
+                                            PendingScp (serial, model,       unknown serial → not accepted
+                                            firmware, MAC)
+4b. Pending controllers: adopt 2001843  ─►  "Main gate".Serial = 2001843 (from the ID report)
+    into "Main gate"                                                      ◄─ next connection: match → "Main gate"
+                                                                             (318 → SCP ID 1)
                                                                              1107 → 1105 → 1116 → 302 → 108 → 109(off)
                                                                              → 110… → 111… → 112 → 113/114 → 115
                                                                              → 109(on) → 303
@@ -274,9 +278,9 @@ MVC (user)                                  DB                                  
 | # | Rule |
 |---|---|
 | 1 | **Explicit publish.** Editing changes the draft only; "Publish configuration" creates an immutable `ConfigVersion` (number, published by, at). The Gateway applies only published versions. |
-| 2 | **Sync status per controller:** `NotPublished` → `Pending` → `Applying` → `InSync` / `Failed` (with the NAK'd command and reason). `PublishedVersion` vs `AppliedVersion` shown in the UI. |
+| 2 | **Sync status per controller:** `NotPublished` → `Pending` → `Applying` → `InSync` / `Failed` (with the NAK'd command and reason). `PublishedVersion` vs `AppliedVersion` shown in the UI. The status is **derived, not stored**: `Scps.PublishedVersion` is written by users only; `AppliedVersion` and the apply state live in `ScpConnectionStates`, written by the Gateway only, so Gateway updates never cause concurrency conflicts on a user's edit form. |
 | 3 | **Verify, then reload only what is out of sync** (HID SDK §5.13–5.14). On every connect the Gateway sends 1107/1105 (required to accept the connection and to interpret transactions), then reads the **config marker** it stored in the controller's Remote Memory Storage (**1851**) and the structure allocations (**1853**). Marker = applied `ConfigVersion` + hash. Equal to the published version → nothing to download. Different or missing → download the configuration (§6 order), write the new marker (**1852**), save to flash (**211**). Card data later uses its own marker so only changed cardholders are reloaded. |
-| 4 | **Controller matching by serial number** entered by the user (IP Client). An unregistered controller that connects appears as **Pending controller** (serial, model, firmware, MAC from the ID report). It is **not** accepted (no 1107), so the driver detaches it after `provisioning_time`; it retries and stays listed until a user adopts it (links to a record) or rejects it. On adoption the Gateway programs the controller's ID with **318** = the record's SCP number, so the driver assigns that ID on later connections (SDK §14.11 default behaviour). New controllers ship with ID **1**, so the first unconfigured controller may arrive as SCP 1. |
+| 4 | **Controller matching by serial number; the serial comes from the controller's ID report** (IP Client; decided 2026-11-24). The serial is **optional** on a controller record: empty = pre-registered, awaiting adoption; a user may type it to pre-register a known controller, which is then matched automatically on first connection. Controllers can be created **before** the hardware connects (doors/readers configured in advance) or **from a pending controller** (adopt → new record under a chosen site). Adoption writes the serial from the ID report into the record; once a controller has been matched, its serial changes only through an explicit "Replace controller" / re-adopt action (step 4). An unregistered controller that connects appears as **Pending controller** (serial, model, firmware, MAC from the ID report). It is **not** accepted (no 1107), so the driver detaches it after `provisioning_time`; it retries and stays listed until a user adopts it (links to a record) or rejects it. On adoption the Gateway programs the controller's ID with **318** = the record's SCP number, so the driver assigns that ID on later connections (SDK §14.11 default behaviour). New controllers ship with ID **1**, so the first unconfigured controller may arrive as SCP 1. |
 | 4a | **Allocation changes need a reset.** Changing 1107 (capacities, GMT offset, number of SIOs/points/readers…) or 1105 (card record layout) requires **301 Reset SCP** first (SDK §5.15), which **erases the controller's database and its unreported transactions**. These fields are therefore set once at creation; changing them is a separate, explicitly confirmed "Re-initialize controller" action that first collects pending transactions, then 301, then a full download. |
 | 4b | **Firmware tracking.** The ID report firmware version is stored; a mismatch with the supported version is flagged in the UI (SDK §5.13). |
 | 5 | **Connection mode per controller** (IP Client default / IP Server). IP Server needs the controller IP; on publish the Gateway sends 1013 + 207 itself. Network / host-comm settings themselves are commissioned manually on the controller and are read-only in our software (§5.2.1). |
@@ -300,7 +304,7 @@ MVC (user)                                  DB                                  
 | MSP1 driver 1 / 2 | port **1** / **2** (RS-485) | Reserved for X100/X200/X300 later (16 SIOs each). |
 | SIO 0 | X1100 internal, model **196** | 7 inputs, 4 outputs, 2 reader ports (configure 4 reader slots as in guide). |
 | Reader 0 / 1 on SIO 0 | VL70LF **IN** / VL70LF **OUT** | Reader ports 1/2 on the board. |
-| ACR 0 / 1 | Door 1 entry / exit | Paired if in/out on the same door. |
+| ACR numbers | Door number = entry ACR; a door with an exit reader gets a second, **paired** ACR (`Doors.ExitAcrNumber`, lowest free number, stable while the exit reader stays) | SDK §8.1.3 paired readers: entry ACR `access_cfg` 1 controls the door; exit ACR `access_cfg` 2, strike/door/REX −1. Doors + exit ACRs ≤ 64. |
 | Card format 0..7 | Defined per actual card bit-layout | Max **8 formats per ACR** (`cd_format` bitmap). |
 | Timezone 1 | 24×7 | Timezone 0 is reserved ("none"). |
 | Access level 1.. | Host-allocated | Access level 0 = none. |
@@ -333,7 +337,7 @@ Network and host-communication settings are **commissioned manually on the contr
 |---|---|
 | **Why manual** | Our software can only reach a controller that is already on the network and knows the host. Every network change takes effect only after a reboot (web "Apply Settings, Reboot", or SDK 913), and a wrong IP / gateway / host IP makes the controller unreachable → **manual on-site recovery** (DIP switches / RESET). Remote changes are therefore not offered. |
 | **Factory access** | DIP 2 ON (others OFF) = factory communication defaults: **IP Server, static 192.168.0.251**, subnet 255.255.0.0, gateway/DNS 192.168.0.1, port 3001, TLS if available. DIP 1 ON = default login `admin` / `password` for 5 minutes. In factory-default modes the configuration is **not** saved to flash (X1100 install guide §6). |
-| **Checklist** | 1. Laptop on 192.168.0.x → `https://192.168.0.251` (DIP 1 for login). 2. Change the default password. 3. Network: static IP (or DHCP) from SANS IT, subnet, gateway, DNS. 4. Host Comm: **IP Client**, Host IP = Gateway server, port **3001**, TLS if available (§5.2 table). 5. Auto-Save ON. 6. Apply Settings, Reboot. 7. **All DIP switches OFF**. 8. Record the controller's serial number (label / ID report) for registration in the MVC. |
+| **Checklist** | 1. Laptop on 192.168.0.x → `https://192.168.0.251` (DIP 1 for login). 2. Change the default password. 3. Network: static IP (or DHCP) from SANS IT, subnet, gateway, DNS. 4. Host Comm: **IP Client**, Host IP = Gateway server, port **3001**, TLS if available (§5.2 table). 5. Auto-Save ON. 6. Apply Settings, Reboot. 7. **All DIP switches OFF**. 8. Optionally note the serial number from the label; the MVC takes it from the ID report when the controller is adopted (§3.7 rule 4). |
 | **In our software** | The controller is identified by **serial number** (ID report), not IP. IP Client: no IP is entered; the network settings may be **read and displayed** after connection with **900** (read type 2 = network, 3 = host comm). IP Server (lab only): the controller IP is entered by the user because the Gateway connects to it (1013). Commands **902 / 903 / 913 are not used**. |
 
 ### 5.3 Startup sequence — IP Client
@@ -502,7 +506,7 @@ Target for production: **OSDP Secure Channel ON** (bit 7). For first bring-up us
 | strike_t_min / max | 1 / 5 s | |
 | strike_mode | 1 (`ACR_S_OPEN`) | release on door open |
 | door_sio / door_number | 0 / 0 | door contact |
-| **dc_held** | **300–600** | Door-held-open alert 5–10 min (MoM). Confirm unit/range in SDK spec §8.2. |
+| **dc_held** | **150–300** | Door-held-open alert 5–10 min (MoM). SDK §8.2: unit is **2 seconds** (1–32767); the UI stores seconds and the compiler sends seconds ÷ 2. |
 | rex0 | SIO 0 input 1 | |
 | cd_format | bitmap of defined formats | |
 | default_mode | 5 card only (POC) | 8 = card or PIN if VL70LF has keypad |
@@ -598,7 +602,7 @@ Unknown types are persisted raw and logged, never dropped.
 
 **Development database:** local SQL Server default instance (`localhost`, MSSQLSERVER), Windows Authentication, database **`AccessControl_poc`**. Connection string key `ConnectionStrings:AccessControl`, supplied via user-secrets in Web and Gateway — never committed. (User decision, overrides the standards' "SQL Server in a container" default.)
 
-Minimum tables for the POC: `Sites` ✅, `Scps` ✅ (connection mode, serial, IP/port, `Allocation_*` columns, `PublishedVersion` / `AppliedVersion` / sync status; last ID report added in step 4), `ScpConfigVersions` (published by / at), `PendingScps`, `SioPanels` ✅, `InputPoints` ✅, `OutputPoints` ✅, `Readers` ✅, `Doors` ✅, `InputPoints`, `OutputPoints`, `Doors`, `Readers`, `CardFormats`, `Schedules`, `Holidays`, `AccessLevels`, `Cardholders`, `Credentials`, `AccessEvents` (raw + decoded transaction, controller serial number, UTC time, received-at; unique `(ControllerId, TransactionSerial)`), `ControllerCommands` (outbox: intent, status Pending/Sent/Succeeded/Failed, driver tag, NAK reason, attempts). All follow the auditing/soft-delete/rowversion rules in code-style. `AccessEvents` are append-only and keyed by host IDs so replacing a reader does not lose history.
+Minimum tables for the POC: `Sites` ✅, `Scps` ✅ (connection mode, serial, IP/port, `Allocation_*` columns, `PublishedVersion`), `ScpConfigVersions` ✅ (published by / at, snapshot JSON + hash, compile result), `ScpConfigCommands` ✅ (compiled list per version), `ScpApplyRuns` / `ScpApplyResults` ✅ (apply log), `ScpConnectionStates` ✅ (Gateway-written: online, last ID report, applied version, apply state), `PendingScps` (step 4a), `SioPanels` ✅, `InputPoints` ✅, `OutputPoints` ✅, `Readers` ✅, `Doors` ✅, `InputPoints`, `OutputPoints`, `Doors`, `Readers`, `CardFormats`, `Schedules`, `Holidays`, `AccessLevels`, `Cardholders`, `Credentials`, `AccessEvents` (raw + decoded transaction, controller serial number, UTC time, received-at; unique `(ControllerId, TransactionSerial)`), `ControllerCommands` (outbox: intent, status Pending/Sent/Succeeded/Failed, driver tag, NAK reason, attempts). All follow the auditing/soft-delete/rowversion rules in code-style. `AccessEvents` are append-only and keyed by host IDs so replacing a reader does not lose history.
 
 ---
 
@@ -645,10 +649,10 @@ Tools for cross-checking: HID Aero Panel Tester and Command Decoder (`HID Doc/Ex
 | 10 | Product / solution name (placeholder `AccessControl`) | NERA |
 | 11 | Gateway hosting: which Windows server, service account, firewall rule for TCP 3001 | NERA / SANS IT |
 | 6 | Offline mode policy (`offline_mode`) and local activation during outages | SANS Security |
-| 7 | Exact `dc_held` value (5 or 10 min) | SANS Security |
+| 7 | Exact `dc_held` value (5 or 10 min); unit resolved: 2-second units (SDK §8.2) | SANS Security |
 | 8 | IP Client TLS certificate strategy for production (263 / 775 / 1287 mutual TLS, peer certificate) | NERA / SANS IT |
 | 14 | Reader number ↔ board terminal: the application assumes reader 0 = READER 1, reader 1 = READER 2; slots 2-3 (`nReaders = 4`) allowed but their physical meaning (second OSDP device on a terminal?) is unconfirmed | NERA on receipt |
-| 15 | Door with an exit reader → SDK ACRs: two paired ACRs (`access_cfg` / `pair_acr_number`) or one ACR with an alternate reader (`altrdr_*`). Stored data supports both; decide in step 4 | NERA on receipt |
+| 15 | ✅ **Resolved 2026-11-24** — door with an exit reader = two **paired ACRs** (SDK §8.1.3; `altrdr_*` is for two read heads on one side, not in/out). See §4 and `docs/plans/step-4-publish-and-provisioning.md` §4.1 | — |
 | 13 | Bench-verify **1116 with no DST**: the Gateway sends one past entry (2000-01-01 → 2000-01-02) because HID requires 1116 before the first 302 on every IP Client connection; confirm the controller returns OK (a NAK is logged and the sequence continues) | NERA on receipt |
 | 12 | Bench-verify the SCP ID flow: after **318** on an adopted controller, does the driver use the new ID only after reconnect (detach 208 → reconnect)? | NERA on receipt |
 

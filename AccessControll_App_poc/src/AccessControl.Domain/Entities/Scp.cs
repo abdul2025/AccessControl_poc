@@ -40,7 +40,11 @@ public sealed partial class Scp : AuditableEntity, IHasDisplayName
     public ScpModel Model { get; private set; }
     public ConnectionMode ConnectionMode { get; private set; }
 
-    /// <summary>Controller serial number (label / ID report); how an IP Client controller is recognised.</summary>
+    /// <summary>
+    /// Factory serial number reported by the controller in its ID report; how an IP Client controller is recognised.
+    /// Optional: empty means "pre-registered, not yet adopted" — adoption of a pending controller fills it from the
+    /// ID report. Typing it beforehand pre-registers the controller so it is matched on first connection (spec §3.7 rule 4).
+    /// </summary>
     public int? SerialNumber { get; private set; }
 
     /// <summary>IP Server only: where the Gateway connects. IP Client controllers have no address here (spec §5.2.1).</summary>
@@ -49,18 +53,32 @@ public sealed partial class Scp : AuditableEntity, IHasDisplayName
     public int? Port { get; private set; }
     public string? Description { get; private set; }
     public ScpAllocation Allocation { get; private set; } = null!;
-    public ScpSyncStatus SyncStatus { get; private set; }
+
+    /// <summary>
+    /// Latest published configuration version (1, 2, …), or <c>null</c> before the first publish. Only users change it;
+    /// what the Gateway has applied is kept apart, in the controller's connection state, so the Gateway never touches
+    /// this row (spec §3.7 rule 2; docs/plans/step-4-publish-and-provisioning.md §3.1).
+    /// </summary>
     public int? PublishedVersion { get; private set; }
-    public int? AppliedVersion { get; private set; }
 
     public IReadOnlyList<SioPanel> SioPanels => _sioPanels;
 
     public string DisplayName => Name;
 
     /// <summary>The SCP number is programmed into the controller once a configuration is published (command 318).</summary>
-    public bool CanChangeScpNumber => IsScpNumberChangeable(SyncStatus);
+    public bool CanChangeScpNumber => IsScpNumberChangeable(PublishedVersion);
 
-    public static bool IsScpNumberChangeable(ScpSyncStatus status) => status == ScpSyncStatus.NotPublished;
+    public static bool IsScpNumberChangeable(int? publishedVersion) => publishedVersion is null;
+
+    /// <summary>
+    /// Marks the current configuration as the next published version and returns its number. The caller stores the
+    /// matching immutable <see cref="ScpConfigVersion"/> snapshot in the same save.
+    /// </summary>
+    public int Publish()
+    {
+        PublishedVersion = (PublishedVersion ?? 0) + 1;
+        return PublishedVersion.Value;
+    }
 
     public static Result<Scp> Create(
         Guid siteId,
@@ -88,7 +106,6 @@ public sealed partial class Scp : AuditableEntity, IHasDisplayName
         {
             Model = model,
             Allocation = ScpAllocation.Default with { GmtOffsetSeconds = gmtOffsetSeconds },
-            SyncStatus = ScpSyncStatus.NotPublished,
         };
 
         var applied = scp.Apply(siteId, name, scpNumber, connectionMode, serialNumber, ipAddress, port, description);
@@ -304,12 +321,8 @@ public sealed partial class Scp : AuditableEntity, IHasDisplayName
         int? effectivePort = null;
         if (connectionMode == ConnectionMode.IpClient)
         {
-            // The controller calls the Gateway; it is recognised by serial number and needs no address here.
-            if (serialNumber is null)
-            {
-                return Invalid("Serial number is required for an IP Client controller.");
-            }
-
+            // The controller calls the Gateway and is recognised by serial number (from its ID report), so it needs no
+            // address here. The serial may still be empty: the record is then linked by adopting a pending controller.
             trimmedHost = null;
         }
         else

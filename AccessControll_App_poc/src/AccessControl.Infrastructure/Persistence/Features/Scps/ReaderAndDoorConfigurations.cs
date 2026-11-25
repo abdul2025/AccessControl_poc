@@ -45,6 +45,10 @@ internal sealed class DoorConfiguration : IEntityTypeConfiguration<Door>
         builder.HasIndex("ScpId", nameof(Door.Number)).HasDatabaseName("IX_Doors_ScpId_Number").IsUnique();
         builder.HasIndex("ScpId", nameof(Door.Name)).HasDatabaseName("IX_Doors_ScpId_Name").IsUnique();
 
+        // Exit readers' paired ACRs are unique per controller; that they never equal a door number is a domain rule.
+        builder.HasIndex("ScpId", nameof(Door.ExitAcrNumber)).HasDatabaseName("IX_Doors_ScpId_ExitAcrNumber").IsUnique()
+            .HasFilter("[ExitAcrNumber] IS NOT NULL");
+
         // One door per reader / lock / input — the database backs up the domain rule.
         builder.HasIndex(door => door.EntryReaderId).HasDatabaseName("IX_Doors_EntryReaderId").IsUnique();
         builder.HasIndex(door => door.ExitReaderId).HasDatabaseName("IX_Doors_ExitReaderId").IsUnique().HasFilter("[ExitReaderId] IS NOT NULL");

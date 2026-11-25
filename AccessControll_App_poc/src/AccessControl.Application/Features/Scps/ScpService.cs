@@ -1,3 +1,4 @@
+using AccessControl.Application.Common.Interfaces;
 using AccessControl.Application.Common.Paging;
 using AccessControl.Application.Features.Scps.DTOs;
 using AccessControl.Application.Features.Scps.Interfaces;
@@ -8,7 +9,7 @@ using ScpEntity = AccessControl.Domain.Entities.Scp;
 
 namespace AccessControl.Application.Features.Scps;
 
-public sealed class ScpService(IScpRepository repository) : IScpService
+public sealed class ScpService(IScpRepository repository, ICurrentUser currentUser, TimeProvider timeProvider) : IScpService
 {
     public async Task<Result<PagedResponse<ScpListItemDto>>> ListAsync(
         ScpListFilter filter,
@@ -19,10 +20,53 @@ public sealed class ScpService(IScpRepository repository) : IScpService
     public async Task<Result<ScpDto>> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
         var scp = await repository.GetByIdAsync(id, cancellationToken);
+        if (scp is null)
+        {
+            return Result<ScpDto>.Failure(ScpErrors.NotFound, ScpErrors.NotFoundMessage);
+        }
 
-        return scp is null
-            ? Result<ScpDto>.Failure(ScpErrors.NotFound, ScpErrors.NotFoundMessage)
-            : Result<ScpDto>.Success(scp);
+        // "Unpublished changes" = the draft would produce a different snapshot than the latest published one.
+        if (scp.LatestVersion is { } latest
+            && await repository.GetAggregateForReadAsync(id, cancellationToken) is { } aggregate)
+        {
+            var draftHash = ScpSnapshotBuilder.Hash(ScpSnapshotBuilder.Build(aggregate, latest.Version));
+            scp = scp with { HasUnpublishedChanges = draftHash != latest.SnapshotHash };
+        }
+
+        return Result<ScpDto>.Success(scp);
+    }
+
+    public async Task<Result<int>> PublishAsync(Guid id, byte[] rowVersion, CancellationToken cancellationToken)
+    {
+        var scp = await repository.GetForUpdateAsync(id, cancellationToken);
+        if (scp is null)
+        {
+            return Result<int>.Failure(ScpErrors.NotFound, ScpErrors.NotFoundMessage);
+        }
+
+        // Publishing an unchanged configuration is allowed on purpose: it is how a failed apply is retried.
+        var version = scp.Publish();
+        var snapshot = ScpSnapshotBuilder.Build(scp, version);
+        var configVersion = ScpConfigVersion.Create(
+            scp.Id,
+            version,
+            ScpSnapshotBuilder.ToJson(snapshot),
+            ScpSnapshotBuilder.Hash(snapshot),
+            timeProvider.GetUtcNow(),
+            currentUser.UserId);
+
+        var saved = await repository.PublishAsync(scp, configVersion, rowVersion, cancellationToken);
+        return saved.IsSuccess
+            ? Result<int>.Success(version)
+            : Result<int>.Failure(saved.ErrorCode!, saved.ErrorMessage!);
+    }
+
+    public async Task<Result<ScpCommandListDto>> GetCommandsAsync(Guid id, int? version, CancellationToken cancellationToken)
+    {
+        var commands = await repository.GetCommandsAsync(id, version, cancellationToken);
+        return commands is null
+            ? Result<ScpCommandListDto>.Failure(ScpErrors.VersionNotFound, ScpErrors.VersionNotFoundMessage)
+            : Result<ScpCommandListDto>.Success(commands);
     }
 
     public async Task<Result<IReadOnlyList<SiteOptionDto>>> ListSiteOptionsAsync(CancellationToken cancellationToken) =>
